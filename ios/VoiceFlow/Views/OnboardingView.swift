@@ -49,7 +49,7 @@ struct OnboardingView: View {
         OnboardingSlide(
             icon: "lock.shield",
             title: "Your IT department blocks third-party keyboards.",
-            body: """
+            message:"""
             VoiceFlow works around that. Dictate anywhere, get a clean, \
             polished transcript on your clipboard, and paste it into \
             Outlook, Teams, Slack, or any other corporate app — \
@@ -62,7 +62,7 @@ struct OnboardingView: View {
         OnboardingSlide(
             icon: "mic.fill",
             title: "Allow the microphone and speech recognition.",
-            body: "We only listen when you explicitly tap Quick Dictate. Recording stops on silence or when you tap Done."
+            message:"We only listen when you explicitly tap Quick Dictate. Recording stops on silence or when you tap Done."
         ) {
             Button {
                 Task { _ = await engine.requestPermissions() }
@@ -83,7 +83,7 @@ struct OnboardingView: View {
         OnboardingSlide(
             icon: "circle.grid.3x3.fill",
             title: "Put Quick Dictate where you can reach it.",
-            body: """
+            message:"""
             On iPhone 15 Pro and newer, assign VoiceFlow to your Action \
             Button via Settings → Action Button → Shortcut → VoiceFlow → \
             Quick Dictate. You can also add it as a Lock Screen widget, \
@@ -96,7 +96,7 @@ struct OnboardingView: View {
         OnboardingSlide(
             icon: "arrow.up.right.square",
             title: "Pick your paste destinations.",
-            body: "After every Quick Dictate, we'll show icons to jump straight into the apps where you paste most often. Tap to toggle."
+            message:"After every Quick Dictate, we'll show icons to jump straight into the apps where you paste most often. Tap to toggle."
         ) {
             VStack(spacing: 10) {
                 ForEach(pasteTargets.targets.prefix(6)) { target in
@@ -124,7 +124,7 @@ struct OnboardingView: View {
         OnboardingSlide(
             icon: "checkmark.circle",
             title: "Try it — dictate something and paste into Notes.",
-            body: """
+            message:"""
             Tap Quick Dictate below, say "This is my first VoiceFlow \
             dictation," let it auto-stop, then tap the Notes icon in the \
             confirmation banner. Paste in Notes to see it land cleanly.
@@ -139,7 +139,7 @@ struct OnboardingView: View {
         OnboardingSlide(
             icon: "laptopcomputer.and.iphone",
             title: "Bonus: Universal Clipboard.",
-            body: """
+            message:"""
             Dictate on your iPhone, then paste on your Mac — in \
             corporate Outlook desktop, Teams desktop, Slack, anywhere. \
             Apple's Universal Clipboard carries the polished text \
@@ -187,22 +187,23 @@ struct OnboardingView: View {
 private struct OnboardingSlide<Extra: View>: View {
     let icon: String
     let title: String
-    let body: String
+    /// Renamed from `body` to avoid shadowing `View.body`.
+    let message: String
     @ViewBuilder let extra: () -> Extra
 
     init(
         icon: String,
         title: String,
-        body: String,
+        message: String,
         @ViewBuilder extra: @escaping () -> Extra = { EmptyView() }
     ) {
         self.icon = icon
         self.title = title
-        self.body = body
+        self.message = message
         self.extra = extra
     }
 
-    var bodyView: some View {
+    var body: some View {
         ScrollView {
             VStack(spacing: 24) {
                 Image(systemName: icon)
@@ -213,7 +214,7 @@ private struct OnboardingSlide<Extra: View>: View {
                     .font(.title2.bold())
                     .multilineTextAlignment(.center)
                     .padding(.horizontal, 24)
-                Text(body)
+                Text(message)
                     .font(.body)
                     .foregroundStyle(.secondary)
                     .multilineTextAlignment(.center)
@@ -223,10 +224,6 @@ private struct OnboardingSlide<Extra: View>: View {
                 Spacer(minLength: 40)
             }
         }
-    }
-
-    var body: some View {
-        bodyView
     }
 }
 
