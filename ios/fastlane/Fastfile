@@ -4,34 +4,34 @@
 #
 #   bundle exec fastlane beta
 #
-# Required environment variables (set in ~/.voiceflow.env or your
-# shell profile; do NOT commit them):
-#
-#   ANTHROPIC_API_KEY              sk-ant-...
-#   VOICEFLOW_APPLE_ID             you@example.com
-#   VOICEFLOW_TEAM_ID              ABCD123XYZ
-#   VOICEFLOW_APP_STORE_CONNECT_KEY_ID
-#   VOICEFLOW_APP_STORE_CONNECT_ISSUER_ID
-#   VOICEFLOW_APP_STORE_CONNECT_KEY_PATH   absolute path to the .p8
-#
-# The `beta` lane:
-#   1. Regenerates the Xcode project from project.yml via xcodegen
+# What the `beta` lane does:
+#   1. Loads credentials from ~/.voiceflow.env
 #   2. Writes Secrets.swift from $ANTHROPIC_API_KEY
-#   3. Bumps the build number (uses the App Store Connect latest + 1)
-#   4. Builds and signs a release archive (gym)
-#   5. Uploads to TestFlight via the App Store Connect API (pilot)
+#   3. Bumps CFBundleVersion in Info.plist to (latest TestFlight + 1)
+#   4. Archives in Release config with automatic signing
+#   5. Uploads to TestFlight via the App Store Connect API
+#
+# Required env vars in ~/.voiceflow.env:
+#
+#   ANTHROPIC_API_KEY                       sk-ant-...
+#   VOICEFLOW_TEAM_ID                       10-char Team ID
+#   VOICEFLOW_APP_STORE_CONNECT_KEY_ID      10-char Key ID
+#   VOICEFLOW_APP_STORE_CONNECT_ISSUER_ID   UUID issuer ID
+#   VOICEFLOW_APP_STORE_CONNECT_KEY_PATH    absolute path to .p8
+#
+# Optional:
+#   VOICEFLOW_APP_ID       defaults to com.hak-tx.voiceflow
+#   VOICEFLOW_CHANGELOG    TestFlight changelog, defaults to git SHA
 
 default_platform(:ios)
 
-WORKSPACE = nil
-PROJECT   = "VoiceFlow.xcodeproj"
-SCHEME    = "VoiceFlow"
+PROJECT      = "VoiceFlow.xcodeproj"
+SCHEME       = "VoiceFlow"
+INFO_PLIST   = "VoiceFlow/Info.plist"
 
 platform :ios do
 
   before_all do
-    # Pull in ~/.voiceflow.env if present so the fastlane run picks up
-    # API keys without you having to export them every terminal.
     env_file = File.expand_path("~/.voiceflow.env")
     if File.exist?(env_file)
       File.foreach(env_file) do |line|
@@ -40,14 +40,6 @@ platform :ios do
           ENV[m[1]] ||= m[2]
         end
       end
-    end
-  end
-
-  desc "Regenerate Xcode project from project.yml"
-  lane :regen do
-    sh("which xcodegen > /dev/null || brew install xcodegen")
-    Dir.chdir("..") do
-      sh("xcodegen generate")
     end
   end
 
@@ -60,7 +52,6 @@ platform :ios do
 
   desc "Build and upload a new TestFlight build"
   lane :beta do
-    regen
     secrets
 
     api_key = app_store_connect_api_key(
@@ -76,11 +67,12 @@ platform :ios do
       initial_build_number: 0
     )
     next_build = latest.to_i + 1
+    UI.message("Bumping build number to #{next_build}")
 
-    increment_build_number(
-      xcodeproj: PROJECT,
-      build_number: next_build.to_s
-    )
+    # Our project uses GENERATE_INFOPLIST_FILE=NO with an explicit
+    # Info.plist, so we edit CFBundleVersion directly via plutil
+    # instead of using fastlane's agvtool-based build-number action.
+    sh("plutil -replace CFBundleVersion -string '#{next_build}' ../#{INFO_PLIST}")
 
     build_app(
       project: PROJECT,
@@ -98,21 +90,20 @@ platform :ios do
       app_identifier: ENV.fetch("VOICEFLOW_APP_ID", "com.hak-tx.voiceflow"),
       skip_waiting_for_build_processing: true,
       skip_submission: true,
-      changelog: ENV["VOICEFLOW_CHANGELOG"] || "New internal build from #{`git rev-parse --short HEAD`.strip}."
+      changelog: ENV["VOICEFLOW_CHANGELOG"] || "Build from #{`git rev-parse --short HEAD`.strip}."
     )
+
+    UI.success("Uploaded build #{next_build} to TestFlight. Wait 5-15 min for Apple processing.")
   end
 
-  desc "Build without uploading (sanity check that everything compiles and signs)"
+  desc "Build-only sanity check (no upload)"
   lane :build_only do
-    regen
     secrets
     build_app(
       project: PROJECT,
       scheme: SCHEME,
       configuration: "Release",
       clean: true,
-      skip_archive: false,
-      skip_codesigning: false,
       export_method: "app-store",
       output_directory: "build",
       output_name: "VoiceFlow.ipa",
