@@ -37,7 +37,9 @@ platform :ios do
       File.foreach(env_file) do |line|
         next if line =~ /^\s*#/
         if (m = line.strip.match(/\A([A-Z0-9_]+)=(.*)\z/))
-          ENV[m[1]] ||= m[2]
+          # Use = (not ||=) so the file is the source of truth and
+          # overrides any stale shell env from prior runs.
+          ENV[m[1]] = m[2]
         end
       end
     end
