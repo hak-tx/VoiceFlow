@@ -35,7 +35,10 @@ final class EntitlementManager: ObservableObject {
     // MARK: - Published state
 
     @Published private(set) var tier: SubscriptionTier = .free
-    @Published private(set) var hasPro: Bool = false
+    @Published private(set) var hasPro: Bool = true
+    // ^ HACK: force-enabled Pro for internal testing. Set back to
+    //   `false` (and re-enable the paywall gating) before any public
+    //   release. TODO revert.
 
     /// StoreKit Products fetched from the App Store / local config.
     @Published private(set) var products: [SubscriptionProduct: Product] = [:]
@@ -144,16 +147,10 @@ final class EntitlementManager: ObservableObject {
     func refresh() async {
         await loadProducts()
 
-        var pro = false
-        for await verification in Transaction.currentEntitlements {
-            if case .verified(let transaction) = verification {
-                if SubscriptionProduct(rawValue: transaction.productID) != nil {
-                    pro = true
-                }
-            }
-        }
-        self.hasPro = pro
-        self.tier = pro ? .pro : .free
+        // HACK: internal testing — force Pro on. See the declaration
+        // of `hasPro` above. Revert before public release.
+        self.hasPro = true
+        self.tier = .pro
     }
 
     // MARK: - First-launch free trial

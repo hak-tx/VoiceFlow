@@ -359,6 +359,21 @@ struct DictationView: View {
                 .padding(.horizontal, 16)
                 .padding(.vertical, 12)
                 .disabled(engine.isRecording) // prevent edit while mic live
+                .toolbar {
+                    // Adds a Done button above the iOS keyboard when
+                    // the TextEditor is focused so the user can
+                    // dismiss the keyboard without tapping outside.
+                    ToolbarItemGroup(placement: .keyboard) {
+                        Spacer()
+                        Button("Done") {
+                            UIApplication.shared.sendAction(
+                                #selector(UIResponder.resignFirstResponder),
+                                to: nil, from: nil, for: nil
+                            )
+                        }
+                        .font(.headline)
+                    }
+                }
 
             // Placeholder text shown when transcript is empty.
             if visibleTranscript.isEmpty {
