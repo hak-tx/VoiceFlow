@@ -168,6 +168,15 @@ final class DictationEngine: ObservableObject {
     func stop() async {
         guard isRecording else { return }
 
+        // Flip isRecording FIRST so any late callback from the
+        // recognition task (SFSpeechRecognizer often delivers one
+        // final result after .finish() is called) is ignored by the
+        // guard in handleTranscriptUpdate. Without this, the final
+        // result re-appends the current transcript on top of an
+        // already-finalized stitched segment, producing duplication
+        // ("Testing testing 123 Testing testing 123").
+        isRecording = false
+
         rotationTimer?.invalidate()
         rotationTimer = nil
         silencePollTimer?.invalidate()
@@ -176,7 +185,6 @@ final class DictationEngine: ObservableObject {
 
         finalizeCurrentSegmentIntoStitched()
         teardownAudio()
-        isRecording = false
         audioLevel = 0
 
         liveTranscript = stitchedSegments
@@ -334,6 +342,15 @@ final class DictationEngine: ObservableObject {
             [weak self] result, error in
             guard let self else { return }
             Task { @MainActor in
+                // Bail on any late callbacks after stop() has
+                // flipped isRecording to false. SFSpeechRecognizer
+                // will often deliver one final result after we've
+                // already stitched + finalized, and without this
+                // guard that final result gets re-appended on top
+                // of the already-finalized segment, producing a
+                // duplicated transcript.
+                guard self.isRecording else { return }
+
                 if let result {
                     let stitched = self.stitchedSegments
                         .joined(separator: " ")
@@ -347,7 +364,7 @@ final class DictationEngine: ObservableObject {
                     }
                     self.handleTranscriptUpdate(combined)
                 }
-                if let error, self.isRecording {
+                if let error {
                     self.errorMessage = error.localizedDescription
                 }
             }
