@@ -385,6 +385,13 @@ struct DictationView: View {
                     .allowsHitTesting(false)
             }
         }
+        // Give the transcript area the remaining vertical space in
+        // the parent VStack. Without this, TextEditor collapses to
+        // its intrinsic ~1-line height when there's lots of fixed
+        // content above (Quick Dictate CTA, tone row, vocab pack
+        // CTA) so the user's dictation appears invisible.
+        .frame(maxWidth: .infinity, maxHeight: .infinity)
+        .frame(minHeight: 180)
     }
 
     // MARK: - Action bar
