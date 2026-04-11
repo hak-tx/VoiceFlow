@@ -43,6 +43,17 @@ struct DictationView: View {
     @State private var showingRecent = false
     @State private var paywallReason: PaywallReason = .manual
 
+    /// Dismiss the iOS keyboard if the TextEditor (or any other
+    /// input) currently has focus. Called on every tap that isn't
+    /// in the TextEditor itself so the keyboard doesn't linger over
+    /// the tone / vocab / action UI.
+    private func dismissKeyboard() {
+        UIApplication.shared.sendAction(
+            #selector(UIResponder.resignFirstResponder),
+            to: nil, from: nil, for: nil
+        )
+    }
+
     private var visibleTranscript: String {
         if !engine.polishedTranscript.isEmpty {
             return engine.polishedTranscript
@@ -160,6 +171,7 @@ struct DictationView: View {
     /// users who want the traditional "watch me dictate" flow.
     private var quickDictateCTA: some View {
         Button {
+            dismissKeyboard()
             showingQuickDictate = true
         } label: {
             HStack(spacing: 14) {
@@ -231,6 +243,7 @@ struct DictationView: View {
         let isGated = preset.requiresPro && !entitlements.hasPro
 
         Button {
+            dismissKeyboard()
             if isGated {
                 paywallReason = .proFeatureGated(name: preset.title + " tone")
                 showingPaywall = true
@@ -269,6 +282,7 @@ struct DictationView: View {
     /// paywall. Replaces the old cryptic book icon in the toolbar.
     private var vocabPacksCTA: some View {
         Button {
+            dismissKeyboard()
             showingPacks = true
         } label: {
             HStack(spacing: 12) {
