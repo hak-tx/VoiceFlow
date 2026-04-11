@@ -1,0 +1,14 @@
+{
+  "schemaVersion": "1.0",
+  "updated": "2026-04-11",
+  "packs": [
+    {
+      "id": "software-dev",
+      "name": "Software Development",
+      "file": "software-dev.json",
+      "version": "1.0.0",
+      "description": "Common software engineering terms, acronyms, tools, and phrases. Good for standups, code reviews, and technical notes.",
+      "termCount": 50
+    }
+  ]
+}
