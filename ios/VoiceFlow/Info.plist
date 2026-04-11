@@ -49,5 +49,33 @@
     <string>VoiceFlow uses your microphone to capture dictation so we can convert your speech into clean, polished text.</string>
     <key>NSSpeechRecognitionUsageDescription</key>
     <string>VoiceFlow uses on-device and Apple speech recognition to transcribe what you say in real time.</string>
+    <key>LSApplicationQueriesSchemes</key>
+    <array>
+        <string>ms-outlook</string>
+        <string>msteams</string>
+        <string>slack</string>
+        <string>mailto</string>
+        <string>sms</string>
+        <string>mobilenotes</string>
+        <string>drafts</string>
+        <string>bear</string>
+        <string>things</string>
+        <string>todoist</string>
+    </array>
+    <key>CFBundleIcons</key>
+    <dict>
+        <key>CFBundleAlternateIcons</key>
+        <dict>
+            <key>AppIcon-Discreet</key>
+            <dict>
+                <key>CFBundleIconFiles</key>
+                <array>
+                    <string>AppIcon-Discreet</string>
+                </array>
+                <key>UIPrerenderedIcon</key>
+                <false/>
+            </dict>
+        </dict>
+    </dict>
 </dict>
 </plist>

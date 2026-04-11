@@ -7,29 +7,91 @@
 	objects = {
 
 /* Begin PBXBuildFile section */
-		A1B0000100000000000000A1 /* VoiceFlowApp.swift in Sources */ = {isa = PBXBuildFile; fileRef = A1C0000100000000000000A1 /* VoiceFlowApp.swift */; };
-		A1B0000200000000000000A1 /* DictationView.swift in Sources */ = {isa = PBXBuildFile; fileRef = A1C0000200000000000000A1 /* DictationView.swift */; };
-		A1B0000300000000000000A1 /* DictationEngine.swift in Sources */ = {isa = PBXBuildFile; fileRef = A1C0000300000000000000A1 /* DictationEngine.swift */; };
-		A1B0000400000000000000A1 /* VocabPackManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = A1C0000400000000000000A1 /* VocabPackManager.swift */; };
-		A1B0000500000000000000A1 /* Secrets.swift in Sources */ = {isa = PBXBuildFile; fileRef = A1C0000500000000000000A1 /* Secrets.swift */; };
-		A1B0000600000000000000A1 /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = A1C0000600000000000000A1 /* Assets.xcassets */; };
-		A1B0000700000000000000A1 /* Preview Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = A1C0000700000000000000A1 /* Preview Assets.xcassets */; };
+		B1000001000000000000A101 /* VoiceFlowApp.swift in Sources */ = {isa = PBXBuildFile; fileRef = F1000001000000000000A101 /* VoiceFlowApp.swift */; };
+		B1000002000000000000A101 /* Secrets.swift in Sources */ = {isa = PBXBuildFile; fileRef = F1000002000000000000A101 /* Secrets.swift */; };
+		B1000005000000000000A101 /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = F1000005000000000000A101 /* Assets.xcassets */; };
+		B1000006000000000000A101 /* Preview Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = F1000006000000000000A101 /* Preview Assets.xcassets */; };
+
+		B1100001000000000000A101 /* DictationEngine.swift in Sources */ = {isa = PBXBuildFile; fileRef = F1100001000000000000A101 /* DictationEngine.swift */; };
+		B1100002000000000000A101 /* ClaudeCleanup.swift in Sources */ = {isa = PBXBuildFile; fileRef = F1100002000000000000A101 /* ClaudeCleanup.swift */; };
+		B1100003000000000000A101 /* VoiceCommandParser.swift in Sources */ = {isa = PBXBuildFile; fileRef = F1100003000000000000A101 /* VoiceCommandParser.swift */; };
+		B1100004000000000000A101 /* VocabPackManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = F1100004000000000000A101 /* VocabPackManager.swift */; };
+		B1100005000000000000A101 /* EntitlementManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = F1100005000000000000A101 /* EntitlementManager.swift */; };
+		B1100006000000000000A101 /* UsageTracker.swift in Sources */ = {isa = PBXBuildFile; fileRef = F1100006000000000000A101 /* UsageTracker.swift */; };
+		B1100007000000000000A101 /* PasteTargetsManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = F1100007000000000000A101 /* PasteTargetsManager.swift */; };
+		B1100008000000000000A101 /* AppSettings.swift in Sources */ = {isa = PBXBuildFile; fileRef = F1100008000000000000A101 /* AppSettings.swift */; };
+
+		B1200001000000000000A101 /* DictationView.swift in Sources */ = {isa = PBXBuildFile; fileRef = F1200001000000000000A101 /* DictationView.swift */; };
+		B1200002000000000000A101 /* VocabPackPickerView.swift in Sources */ = {isa = PBXBuildFile; fileRef = F1200002000000000000A101 /* VocabPackPickerView.swift */; };
+		B1200003000000000000A101 /* PaywallView.swift in Sources */ = {isa = PBXBuildFile; fileRef = F1200003000000000000A101 /* PaywallView.swift */; };
+		B1200004000000000000A101 /* SettingsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = F1200004000000000000A101 /* SettingsView.swift */; };
+		B1200005000000000000A101 /* TonePresetPicker.swift in Sources */ = {isa = PBXBuildFile; fileRef = F1200005000000000000A101 /* TonePresetPicker.swift */; };
+		B1200006000000000000A101 /* QuickDictateView.swift in Sources */ = {isa = PBXBuildFile; fileRef = F1200006000000000000A101 /* QuickDictateView.swift */; };
+		B1200007000000000000A101 /* RecentDictationsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = F1200007000000000000A101 /* RecentDictationsView.swift */; };
+		B1200008000000000000A101 /* PasteTargetsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = F1200008000000000000A101 /* PasteTargetsView.swift */; };
+		B1200009000000000000A101 /* OnboardingView.swift in Sources */ = {isa = PBXBuildFile; fileRef = F1200009000000000000A101 /* OnboardingView.swift */; };
+
+		B1300001000000000000A101 /* TonePreset.swift in Sources */ = {isa = PBXBuildFile; fileRef = F1300001000000000000A101 /* TonePreset.swift */; };
+		B1300002000000000000A101 /* VocabPack.swift in Sources */ = {isa = PBXBuildFile; fileRef = F1300002000000000000A101 /* VocabPack.swift */; };
+		B1300003000000000000A101 /* Subscription.swift in Sources */ = {isa = PBXBuildFile; fileRef = F1300003000000000000A101 /* Subscription.swift */; };
+		B1300004000000000000A101 /* DictationHistory.swift in Sources */ = {isa = PBXBuildFile; fileRef = F1300004000000000000A101 /* DictationHistory.swift */; };
+		B1300005000000000000A101 /* PasteTarget.swift in Sources */ = {isa = PBXBuildFile; fileRef = F1300005000000000000A101 /* PasteTarget.swift */; };
+
+		B1400001000000000000A101 /* VoiceFlowIntents.swift in Sources */ = {isa = PBXBuildFile; fileRef = F1400001000000000000A101 /* VoiceFlowIntents.swift */; };
+
+		B1500001000000000000A101 /* ShareExtensionPlaceholder.swift in Sources */ = {isa = PBXBuildFile; fileRef = F1500001000000000000A101 /* ShareExtensionPlaceholder.swift */; };
+
+		B1600001000000000000A101 /* software-dev.json in Resources */ = {isa = PBXBuildFile; fileRef = F1600001000000000000A101 /* software-dev.json */; };
+		B1600002000000000000A101 /* general-business.json in Resources */ = {isa = PBXBuildFile; fileRef = F1600002000000000000A101 /* general-business.json */; };
+		B1600003000000000000A101 /* medical-general.json in Resources */ = {isa = PBXBuildFile; fileRef = F1600003000000000000A101 /* medical-general.json */; };
+		B1600004000000000000A101 /* catalog.json in Resources */ = {isa = PBXBuildFile; fileRef = F1600004000000000000A101 /* catalog.json */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXFileReference section */
-		A1C0000000000000000000A1 /* VoiceFlow.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = VoiceFlow.app; sourceTree = BUILT_PRODUCTS_DIR; };
-		A1C0000100000000000000A1 /* VoiceFlowApp.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = VoiceFlowApp.swift; sourceTree = "<group>"; };
-		A1C0000200000000000000A1 /* DictationView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DictationView.swift; sourceTree = "<group>"; };
-		A1C0000300000000000000A1 /* DictationEngine.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DictationEngine.swift; sourceTree = "<group>"; };
-		A1C0000400000000000000A1 /* VocabPackManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = VocabPackManager.swift; sourceTree = "<group>"; };
-		A1C0000500000000000000A1 /* Secrets.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Secrets.swift; sourceTree = "<group>"; };
-		A1C0000600000000000000A1 /* Assets.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = Assets.xcassets; sourceTree = "<group>"; };
-		A1C0000700000000000000A1 /* Preview Assets.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = "Preview Assets.xcassets"; sourceTree = "<group>"; };
-		A1C0000800000000000000A1 /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist.xml; path = Info.plist; sourceTree = "<group>"; };
+		F1000000000000000000A101 /* VoiceFlow.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = VoiceFlow.app; sourceTree = BUILT_PRODUCTS_DIR; };
+		F1000001000000000000A101 /* VoiceFlowApp.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = VoiceFlowApp.swift; sourceTree = "<group>"; };
+		F1000002000000000000A101 /* Secrets.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Secrets.swift; sourceTree = "<group>"; };
+		F1000003000000000000A101 /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist.xml; path = Info.plist; sourceTree = "<group>"; };
+		F1000005000000000000A101 /* Assets.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = Assets.xcassets; sourceTree = "<group>"; };
+		F1000006000000000000A101 /* Preview Assets.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = "Preview Assets.xcassets"; sourceTree = "<group>"; };
+
+		F1100001000000000000A101 /* DictationEngine.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DictationEngine.swift; sourceTree = "<group>"; };
+		F1100002000000000000A101 /* ClaudeCleanup.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ClaudeCleanup.swift; sourceTree = "<group>"; };
+		F1100003000000000000A101 /* VoiceCommandParser.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = VoiceCommandParser.swift; sourceTree = "<group>"; };
+		F1100004000000000000A101 /* VocabPackManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = VocabPackManager.swift; sourceTree = "<group>"; };
+		F1100005000000000000A101 /* EntitlementManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = EntitlementManager.swift; sourceTree = "<group>"; };
+		F1100006000000000000A101 /* UsageTracker.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = UsageTracker.swift; sourceTree = "<group>"; };
+		F1100007000000000000A101 /* PasteTargetsManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PasteTargetsManager.swift; sourceTree = "<group>"; };
+		F1100008000000000000A101 /* AppSettings.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppSettings.swift; sourceTree = "<group>"; };
+
+		F1200001000000000000A101 /* DictationView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DictationView.swift; sourceTree = "<group>"; };
+		F1200002000000000000A101 /* VocabPackPickerView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = VocabPackPickerView.swift; sourceTree = "<group>"; };
+		F1200003000000000000A101 /* PaywallView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PaywallView.swift; sourceTree = "<group>"; };
+		F1200004000000000000A101 /* SettingsView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SettingsView.swift; sourceTree = "<group>"; };
+		F1200005000000000000A101 /* TonePresetPicker.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TonePresetPicker.swift; sourceTree = "<group>"; };
+		F1200006000000000000A101 /* QuickDictateView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = QuickDictateView.swift; sourceTree = "<group>"; };
+		F1200007000000000000A101 /* RecentDictationsView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RecentDictationsView.swift; sourceTree = "<group>"; };
+		F1200008000000000000A101 /* PasteTargetsView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PasteTargetsView.swift; sourceTree = "<group>"; };
+		F1200009000000000000A101 /* OnboardingView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = OnboardingView.swift; sourceTree = "<group>"; };
+
+		F1300001000000000000A101 /* TonePreset.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TonePreset.swift; sourceTree = "<group>"; };
+		F1300002000000000000A101 /* VocabPack.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = VocabPack.swift; sourceTree = "<group>"; };
+		F1300003000000000000A101 /* Subscription.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Subscription.swift; sourceTree = "<group>"; };
+		F1300004000000000000A101 /* DictationHistory.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DictationHistory.swift; sourceTree = "<group>"; };
+		F1300005000000000000A101 /* PasteTarget.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PasteTarget.swift; sourceTree = "<group>"; };
+
+		F1400001000000000000A101 /* VoiceFlowIntents.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = VoiceFlowIntents.swift; sourceTree = "<group>"; };
+
+		F1500001000000000000A101 /* ShareExtensionPlaceholder.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ShareExtensionPlaceholder.swift; sourceTree = "<group>"; };
+
+		F1600001000000000000A101 /* software-dev.json */ = {isa = PBXFileReference; lastKnownFileType = text.json; path = "software-dev.json"; sourceTree = "<group>"; };
+		F1600002000000000000A101 /* general-business.json */ = {isa = PBXFileReference; lastKnownFileType = text.json; path = "general-business.json"; sourceTree = "<group>"; };
+		F1600003000000000000A101 /* medical-general.json */ = {isa = PBXFileReference; lastKnownFileType = text.json; path = "medical-general.json"; sourceTree = "<group>"; };
+		F1600004000000000000A101 /* catalog.json */ = {isa = PBXFileReference; lastKnownFileType = text.json; path = "catalog.json"; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
-		A1D0000100000000000000A1 /* Frameworks */ = {
+		P1000001000000000000A101 /* Frameworks */ = {
 			isa = PBXFrameworksBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
@@ -39,41 +101,114 @@
 /* End PBXFrameworksBuildPhase section */
 
 /* Begin PBXGroup section */
-		A1E0000100000000000000A1 = {
+		G1000001000000000000A101 = {
 			isa = PBXGroup;
 			children = (
-				A1E0000200000000000000A1 /* VoiceFlow */,
-				A1E0000300000000000000A1 /* Products */,
+				G1000002000000000000A101 /* VoiceFlow */,
+				G1000003000000000000A101 /* Products */,
 			);
 			sourceTree = "<group>";
 		};
-		A1E0000200000000000000A1 /* VoiceFlow */ = {
+		G1000002000000000000A101 /* VoiceFlow */ = {
 			isa = PBXGroup;
 			children = (
-				A1C0000100000000000000A1 /* VoiceFlowApp.swift */,
-				A1C0000200000000000000A1 /* DictationView.swift */,
-				A1C0000300000000000000A1 /* DictationEngine.swift */,
-				A1C0000400000000000000A1 /* VocabPackManager.swift */,
-				A1C0000500000000000000A1 /* Secrets.swift */,
-				A1C0000600000000000000A1 /* Assets.xcassets */,
-				A1C0000800000000000000A1 /* Info.plist */,
-				A1E0000400000000000000A1 /* Preview Content */,
+				F1000001000000000000A101 /* VoiceFlowApp.swift */,
+				F1000002000000000000A101 /* Secrets.swift */,
+				F1000003000000000000A101 /* Info.plist */,
+				G1000004000000000000A101 /* Core */,
+				G1000005000000000000A101 /* Views */,
+				G1000006000000000000A101 /* Models */,
+				G1000007000000000000A101 /* Intents */,
+				G1000008000000000000A101 /* Extensions */,
+				G1000009000000000000A101 /* Resources */,
+				F1000005000000000000A101 /* Assets.xcassets */,
+				G100000A000000000000A101 /* Preview Content */,
 			);
 			path = VoiceFlow;
 			sourceTree = "<group>";
 		};
-		A1E0000300000000000000A1 /* Products */ = {
+		G1000003000000000000A101 /* Products */ = {
 			isa = PBXGroup;
 			children = (
-				A1C0000000000000000000A1 /* VoiceFlow.app */,
+				F1000000000000000000A101 /* VoiceFlow.app */,
 			);
 			name = Products;
 			sourceTree = "<group>";
 		};
-		A1E0000400000000000000A1 /* Preview Content */ = {
+		G1000004000000000000A101 /* Core */ = {
 			isa = PBXGroup;
 			children = (
-				A1C0000700000000000000A1 /* Preview Assets.xcassets */,
+				F1100001000000000000A101 /* DictationEngine.swift */,
+				F1100002000000000000A101 /* ClaudeCleanup.swift */,
+				F1100003000000000000A101 /* VoiceCommandParser.swift */,
+				F1100004000000000000A101 /* VocabPackManager.swift */,
+				F1100005000000000000A101 /* EntitlementManager.swift */,
+				F1100006000000000000A101 /* UsageTracker.swift */,
+				F1100007000000000000A101 /* PasteTargetsManager.swift */,
+				F1100008000000000000A101 /* AppSettings.swift */,
+			);
+			path = Core;
+			sourceTree = "<group>";
+		};
+		G1000005000000000000A101 /* Views */ = {
+			isa = PBXGroup;
+			children = (
+				F1200001000000000000A101 /* DictationView.swift */,
+				F1200006000000000000A101 /* QuickDictateView.swift */,
+				F1200007000000000000A101 /* RecentDictationsView.swift */,
+				F1200008000000000000A101 /* PasteTargetsView.swift */,
+				F1200009000000000000A101 /* OnboardingView.swift */,
+				F1200002000000000000A101 /* VocabPackPickerView.swift */,
+				F1200003000000000000A101 /* PaywallView.swift */,
+				F1200004000000000000A101 /* SettingsView.swift */,
+				F1200005000000000000A101 /* TonePresetPicker.swift */,
+			);
+			path = Views;
+			sourceTree = "<group>";
+		};
+		G1000006000000000000A101 /* Models */ = {
+			isa = PBXGroup;
+			children = (
+				F1300001000000000000A101 /* TonePreset.swift */,
+				F1300002000000000000A101 /* VocabPack.swift */,
+				F1300003000000000000A101 /* Subscription.swift */,
+				F1300004000000000000A101 /* DictationHistory.swift */,
+				F1300005000000000000A101 /* PasteTarget.swift */,
+			);
+			path = Models;
+			sourceTree = "<group>";
+		};
+		G1000007000000000000A101 /* Intents */ = {
+			isa = PBXGroup;
+			children = (
+				F1400001000000000000A101 /* VoiceFlowIntents.swift */,
+			);
+			path = Intents;
+			sourceTree = "<group>";
+		};
+		G1000008000000000000A101 /* Extensions */ = {
+			isa = PBXGroup;
+			children = (
+				F1500001000000000000A101 /* ShareExtensionPlaceholder.swift */,
+			);
+			path = Extensions;
+			sourceTree = "<group>";
+		};
+		G1000009000000000000A101 /* Resources */ = {
+			isa = PBXGroup;
+			children = (
+				F1600001000000000000A101 /* software-dev.json */,
+				F1600002000000000000A101 /* general-business.json */,
+				F1600003000000000000A101 /* medical-general.json */,
+				F1600004000000000000A101 /* catalog.json */,
+			);
+			path = Resources;
+			sourceTree = "<group>";
+		};
+		G100000A000000000000A101 /* Preview Content */ = {
+			isa = PBXGroup;
+			children = (
+				F1000006000000000000A101 /* Preview Assets.xcassets */,
 			);
 			path = "Preview Content";
 			sourceTree = "<group>";
@@ -81,13 +216,13 @@
 /* End PBXGroup section */
 
 /* Begin PBXNativeTarget section */
-		A1F0000100000000000000A1 /* VoiceFlow */ = {
+		T1000001000000000000A101 /* VoiceFlow */ = {
 			isa = PBXNativeTarget;
-			buildConfigurationList = A200000400000000000000A1 /* Build configuration list for PBXNativeTarget "VoiceFlow" */;
+			buildConfigurationList = C1000004000000000000A101 /* Build configuration list for PBXNativeTarget "VoiceFlow" */;
 			buildPhases = (
-				A1F0000200000000000000A1 /* Sources */,
-				A1D0000100000000000000A1 /* Frameworks */,
-				A1F0000300000000000000A1 /* Resources */,
+				P1000002000000000000A101 /* Sources */,
+				P1000001000000000000A101 /* Frameworks */,
+				P1000003000000000000A101 /* Resources */,
 			);
 			buildRules = (
 			);
@@ -95,25 +230,25 @@
 			);
 			name = VoiceFlow;
 			productName = VoiceFlow;
-			productReference = A1C0000000000000000000A1 /* VoiceFlow.app */;
+			productReference = F1000000000000000000A101 /* VoiceFlow.app */;
 			productType = "com.apple.product-type.application";
 		};
 /* End PBXNativeTarget section */
 
 /* Begin PBXProject section */
-		A200000100000000000000A1 /* Project object */ = {
+		R1000001000000000000A101 /* Project object */ = {
 			isa = PBXProject;
 			attributes = {
 				BuildIndependentTargetsInParallel = 1;
 				LastSwiftUpdateCheck = 1500;
 				LastUpgradeCheck = 1500;
 				TargetAttributes = {
-					A1F0000100000000000000A1 = {
+					T1000001000000000000A101 = {
 						CreatedOnToolsVersion = 15.0;
 					};
 				};
 			};
-			buildConfigurationList = A200000200000000000000A1 /* Build configuration list for PBXProject "VoiceFlow" */;
+			buildConfigurationList = C1000001000000000000A101 /* Build configuration list for PBXProject "VoiceFlow" */;
 			compatibilityVersion = "Xcode 14.0";
 			developmentRegion = en;
 			hasScannedForEncodings = 0;
@@ -121,45 +256,70 @@
 				en,
 				Base,
 			);
-			mainGroup = A1E0000100000000000000A1;
-			productRefGroup = A1E0000300000000000000A1 /* Products */;
+			mainGroup = G1000001000000000000A101;
+			productRefGroup = G1000003000000000000A101 /* Products */;
 			projectDirPath = "";
 			projectRoot = "";
 			targets = (
-				A1F0000100000000000000A1 /* VoiceFlow */,
+				T1000001000000000000A101 /* VoiceFlow */,
 			);
 		};
 /* End PBXProject section */
 
 /* Begin PBXResourcesBuildPhase section */
-		A1F0000300000000000000A1 /* Resources */ = {
+		P1000003000000000000A101 /* Resources */ = {
 			isa = PBXResourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
-				A1B0000700000000000000A1 /* Preview Assets.xcassets in Resources */,
-				A1B0000600000000000000A1 /* Assets.xcassets in Resources */,
+				B1000006000000000000A101 /* Preview Assets.xcassets in Resources */,
+				B1000005000000000000A101 /* Assets.xcassets in Resources */,
+				B1600001000000000000A101 /* software-dev.json in Resources */,
+				B1600002000000000000A101 /* general-business.json in Resources */,
+				B1600003000000000000A101 /* medical-general.json in Resources */,
+				B1600004000000000000A101 /* catalog.json in Resources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
 /* End PBXResourcesBuildPhase section */
 
 /* Begin PBXSourcesBuildPhase section */
-		A1F0000200000000000000A1 /* Sources */ = {
+		P1000002000000000000A101 /* Sources */ = {
 			isa = PBXSourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
-				A1B0000300000000000000A1 /* DictationEngine.swift in Sources */,
-				A1B0000200000000000000A1 /* DictationView.swift in Sources */,
-				A1B0000400000000000000A1 /* VocabPackManager.swift in Sources */,
-				A1B0000500000000000000A1 /* Secrets.swift in Sources */,
-				A1B0000100000000000000A1 /* VoiceFlowApp.swift in Sources */,
+				B1100001000000000000A101 /* DictationEngine.swift in Sources */,
+				B1100002000000000000A101 /* ClaudeCleanup.swift in Sources */,
+				B1100003000000000000A101 /* VoiceCommandParser.swift in Sources */,
+				B1100004000000000000A101 /* VocabPackManager.swift in Sources */,
+				B1100005000000000000A101 /* EntitlementManager.swift in Sources */,
+				B1100006000000000000A101 /* UsageTracker.swift in Sources */,
+				B1100007000000000000A101 /* PasteTargetsManager.swift in Sources */,
+				B1100008000000000000A101 /* AppSettings.swift in Sources */,
+				B1200001000000000000A101 /* DictationView.swift in Sources */,
+				B1200002000000000000A101 /* VocabPackPickerView.swift in Sources */,
+				B1200003000000000000A101 /* PaywallView.swift in Sources */,
+				B1200004000000000000A101 /* SettingsView.swift in Sources */,
+				B1200005000000000000A101 /* TonePresetPicker.swift in Sources */,
+				B1200006000000000000A101 /* QuickDictateView.swift in Sources */,
+				B1200007000000000000A101 /* RecentDictationsView.swift in Sources */,
+				B1200008000000000000A101 /* PasteTargetsView.swift in Sources */,
+				B1200009000000000000A101 /* OnboardingView.swift in Sources */,
+				B1300001000000000000A101 /* TonePreset.swift in Sources */,
+				B1300002000000000000A101 /* VocabPack.swift in Sources */,
+				B1300003000000000000A101 /* Subscription.swift in Sources */,
+				B1300004000000000000A101 /* DictationHistory.swift in Sources */,
+				B1300005000000000000A101 /* PasteTarget.swift in Sources */,
+				B1400001000000000000A101 /* VoiceFlowIntents.swift in Sources */,
+				B1500001000000000000A101 /* ShareExtensionPlaceholder.swift in Sources */,
+				B1000002000000000000A101 /* Secrets.swift in Sources */,
+				B1000001000000000000A101 /* VoiceFlowApp.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
 /* End PBXSourcesBuildPhase section */
 
 /* Begin XCBuildConfiguration section */
-		A200000500000000000000A1 /* Debug */ = {
+		C1000002000000000000A101 /* Debug */ = {
 			isa = XCBuildConfiguration;
 			buildSettings = {
 				ALWAYS_SEARCH_USER_PATHS = NO;
@@ -222,7 +382,7 @@
 			};
 			name = Debug;
 		};
-		A200000600000000000000A1 /* Release */ = {
+		C1000003000000000000A101 /* Release */ = {
 			isa = XCBuildConfiguration;
 			buildSettings = {
 				ALWAYS_SEARCH_USER_PATHS = NO;
@@ -278,7 +438,7 @@
 			};
 			name = Release;
 		};
-		A200000700000000000000A1 /* Debug */ = {
+		C1000005000000000000A101 /* Debug */ = {
 			isa = XCBuildConfiguration;
 			buildSettings = {
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
@@ -305,7 +465,7 @@
 			};
 			name = Debug;
 		};
-		A200000800000000000000A1 /* Release */ = {
+		C1000006000000000000A101 /* Release */ = {
 			isa = XCBuildConfiguration;
 			buildSettings = {
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
@@ -335,25 +495,25 @@
 /* End XCBuildConfiguration section */
 
 /* Begin XCConfigurationList section */
-		A200000200000000000000A1 /* Build configuration list for PBXProject "VoiceFlow" */ = {
+		C1000001000000000000A101 /* Build configuration list for PBXProject "VoiceFlow" */ = {
 			isa = XCConfigurationList;
 			buildConfigurations = (
-				A200000500000000000000A1 /* Debug */,
-				A200000600000000000000A1 /* Release */,
+				C1000002000000000000A101 /* Debug */,
+				C1000003000000000000A101 /* Release */,
 			);
 			defaultConfigurationIsVisible = 0;
 			defaultConfigurationName = Release;
 		};
-		A200000400000000000000A1 /* Build configuration list for PBXNativeTarget "VoiceFlow" */ = {
+		C1000004000000000000A101 /* Build configuration list for PBXNativeTarget "VoiceFlow" */ = {
 			isa = XCConfigurationList;
 			buildConfigurations = (
-				A200000700000000000000A1 /* Debug */,
-				A200000800000000000000A1 /* Release */,
+				C1000005000000000000A101 /* Debug */,
+				C1000006000000000000A101 /* Release */,
 			);
 			defaultConfigurationIsVisible = 0;
 			defaultConfigurationName = Release;
 		};
 /* End XCConfigurationList section */
 	};
-	rootObject = A200000100000000000000A1 /* Project object */;
+	rootObject = R1000001000000000000A101 /* Project object */;
 }
