@@ -231,30 +231,43 @@ Paywall appears on first launch (with the 7-day trial offer), on daily word-limi
 
 ## Setup
 
-You'll need macOS + Xcode 15 or newer, and an Anthropic API key.
+You'll need macOS + Xcode 15 or newer, Homebrew, and an Anthropic API key.
 
-1. **Clone the repo**
+**TL;DR — first-run bootstrap:**
+
+```sh
+git clone git@github.com:hak-tx/VoiceFlow.git
+cd VoiceFlow
+# Create ~/.voiceflow.env with your secrets (see DEPLOY.md step 5)
+./Scripts/bootstrap.sh
+open ios/VoiceFlow.xcodeproj
+```
+
+The bootstrap script installs XcodeGen + fastlane, regenerates
+`ios/VoiceFlow.xcodeproj` from `ios/project.yml`, writes
+`ios/VoiceFlow/Secrets.swift` from `$ANTHROPIC_API_KEY`, and
+sanity-checks that the project parses.
+
+For TestFlight deployment (sign + archive + upload in one command),
+see **[DEPLOY.md](DEPLOY.md)**.
+
+### Manual setup (if you skip the bootstrap script)
+
+1. **Clone the repo** and `cd VoiceFlow`.
+2. **Create your `Secrets.swift`** (gitignored):
    ```sh
-   git clone git@github.com:hak-tx/VoiceFlow.git
-   cd VoiceFlow
+   export ANTHROPIC_API_KEY=sk-ant-...
+   ./Scripts/generate-secrets.sh
    ```
-
-2. **Create your `Secrets.swift`** (it's gitignored):
+3. **Regenerate the Xcode project** from the YAML spec so you get a clean pbxproj:
    ```sh
-   cp ios/VoiceFlow/Secrets.swift.example ios/VoiceFlow/Secrets.swift
+   brew install xcodegen
+   cd ios && xcodegen generate
    ```
-   Then edit `ios/VoiceFlow/Secrets.swift` and replace `sk-ant-REPLACE-ME` with your real key from https://console.anthropic.com/.
-
-3. **Open the project**
-   ```sh
-   open ios/VoiceFlow.xcodeproj
-   ```
-
-4. **Pick your signing team.** Select the `VoiceFlow` target → Signing & Capabilities → pick your Apple Developer team. Change the bundle ID from `com.hak-tx.voiceflow` if it conflicts with something in your account.
-
-5. **(Optional but recommended) Add a StoreKit configuration file.** File → New → File → StoreKit Configuration File → name it `Products.storekit`. Add the three products: `voiceflow.pro.monthly`, `voiceflow.pro.yearly`, `voiceflow.pro.lifetime`. Then Scheme → Edit Scheme → Run → Options → StoreKit Configuration → pick `Products.storekit`. Until you do this, `EntitlementManager.loadProducts()` will return empty and the paywall shows hard-coded display prices.
-
-6. **Build and run.** Target is iOS 17+. First launch shows the 6-step onboarding flow ending on a guided dictation. After that the app asks for Microphone and Speech Recognition permissions — grant both.
+4. **Open the project**: `open ios/VoiceFlow.xcodeproj`
+5. **Pick your signing team.** `VoiceFlow` target → Signing & Capabilities → your Apple Developer team.
+6. **(Optional but recommended for simulator testing) Add a StoreKit configuration file.** File → New → File → StoreKit Configuration File → name it `Products.storekit`. Add `voiceflow.pro.monthly`, `voiceflow.pro.yearly`, `voiceflow.pro.lifetime`. Then Scheme → Edit Scheme → Run → Options → StoreKit Configuration → pick `Products.storekit`. Until you do this, `EntitlementManager.loadProducts()` returns empty and the paywall shows hard-coded display prices.
+7. **Build and run.** Target is iOS 17+. First launch shows the 6-step onboarding flow ending on a guided dictation. After that the app asks for Microphone and Speech Recognition permissions — grant both.
 
 ### iOS permission prompts / Info.plist keys already configured
 - `NSMicrophoneUsageDescription`

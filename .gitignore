@@ -52,6 +52,16 @@ fastlane/report.xml
 fastlane/Preview.html
 fastlane/screenshots/**/*.png
 fastlane/test_output
+ios/fastlane/report.xml
+ios/fastlane/Preview.html
+ios/fastlane/test_output
+ios/vendor/bundle/
+ios/.bundle/
+ios/build/
+
+# App Store Connect API key (never commit)
+*.p8
+~/.voiceflow.env
 
 # ---- Editors ----
 .idea/

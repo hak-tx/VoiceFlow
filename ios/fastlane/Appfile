@@ -1,0 +1,9 @@
+# Appfile — fastlane identity + team.
+#
+# Safe to commit: this file only references environment variables
+# from ~/.voiceflow.env. Your actual Apple ID, Team ID, and API keys
+# never land in the repo. See DEPLOY.md for the env var list.
+
+app_identifier ENV["VOICEFLOW_APP_ID"] || "com.hak-tx.voiceflow"
+apple_id       ENV["VOICEFLOW_APPLE_ID"]
+team_id        ENV["VOICEFLOW_TEAM_ID"]

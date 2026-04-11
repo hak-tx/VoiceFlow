@@ -31,9 +31,14 @@
     <dict/>
     <key>UIRequiredDeviceCapabilities</key>
     <array>
-        <string>armv7</string>
+        <string>arm64</string>
         <string>microphone</string>
     </array>
+    <!-- UIBackgroundModes intentionally omitted for v1. Add "audio"
+         later if we want Quick Dictate to keep recording when the
+         user backgrounds the app. -->
+    <key>ITSAppUsesNonExemptEncryption</key>
+    <false/>
     <key>UISupportedInterfaceOrientations</key>
     <array>
         <string>UIInterfaceOrientationPortrait</string>

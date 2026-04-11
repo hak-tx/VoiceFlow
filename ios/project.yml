@@ -1,0 +1,70 @@
+# XcodeGen spec for VoiceFlow.
+#
+# Regenerate the Xcode project after editing:
+#   cd ios && xcodegen generate
+#
+# Install XcodeGen:
+#   brew install xcodegen
+#
+# The generated VoiceFlow.xcodeproj/project.pbxproj is checked in to
+# the repo so contributors without XcodeGen can still open the
+# project, but any time you add / remove / move files you should
+# rerun xcodegen.
+
+name: VoiceFlow
+
+options:
+  bundleIdPrefix: com.hak-tx
+  deploymentTarget:
+    iOS: "17.0"
+  createIntermediateGroups: true
+  groupSortPosition: top
+  xcodeVersion: "15.0"
+
+settings:
+  base:
+    SWIFT_VERSION: "5.0"
+    IPHONEOS_DEPLOYMENT_TARGET: "17.0"
+    MARKETING_VERSION: "1.0.0"
+    CURRENT_PROJECT_VERSION: "1"
+    ENABLE_USER_SCRIPT_SANDBOXING: "YES"
+    SWIFT_EMIT_LOC_STRINGS: "YES"
+
+targets:
+  VoiceFlow:
+    type: application
+    platform: iOS
+    deploymentTarget: "17.0"
+    # XcodeGen auto-classifies *.swift as sources, *.xcassets / *.json
+    # as resources, and *.plist referenced via INFOPLIST_FILE as a
+    # build setting (not a resource). `Secrets.swift` doesn't exist
+    # in the repo (it's gitignored); generate-secrets.sh creates it
+    # before xcodegen runs.
+    sources:
+      - path: VoiceFlow
+        excludes:
+          - "**/*.example"
+          - "**/.DS_Store"
+          - "Preview Content/**"
+    resources:
+      - path: VoiceFlow/Preview Content
+        buildPhase: resources
+    info:
+      path: VoiceFlow/Info.plist
+    settings:
+      base:
+        PRODUCT_NAME: VoiceFlow
+        PRODUCT_BUNDLE_IDENTIFIER: com.hak-tx.voiceflow
+        INFOPLIST_FILE: VoiceFlow/Info.plist
+        GENERATE_INFOPLIST_FILE: "NO"
+        ASSETCATALOG_COMPILER_APPICON_NAME: AppIcon
+        ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME: AccentColor
+        ASSETCATALOG_COMPILER_INCLUDE_ALL_APPICON_ASSETS: "YES"
+        ENABLE_PREVIEWS: "YES"
+        DEVELOPMENT_ASSET_PATHS: "\"VoiceFlow/Preview Content\""
+        TARGETED_DEVICE_FAMILY: "1,2"
+        CODE_SIGN_STYLE: Automatic
+        # DEVELOPMENT_TEAM is intentionally unset here so the
+        # checked-in project doesn't carry a hard-coded team. Set
+        # it via fastlane (Appfile -> team_id) or pass
+        # DEVELOPMENT_TEAM=... to xcodebuild.
