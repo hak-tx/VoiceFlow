@@ -202,31 +202,46 @@ struct DictationView: View {
 
     // MARK: - Transcript
 
-    private var transcriptArea: some View {
-        ScrollViewReader { proxy in
-            ScrollView {
-                VStack(alignment: .leading, spacing: 12) {
-                    if visibleTranscript.isEmpty {
-                        Text("Tap the mic and start speaking. Your words will appear here in real time.")
-                            .font(.body)
-                            .foregroundStyle(.secondary)
-                            .padding(.top, 40)
-                    } else {
-                        Text(visibleTranscript)
-                            .font(.system(.title3, design: .default))
-                            .foregroundStyle(.primary)
-                            .textSelection(.enabled)
-                            .id("transcript-bottom")
-                    }
+    /// Two-way binding that writes back to whichever engine property
+    /// the UI is currently showing. Lets the user freely edit the
+    /// transcript with a real cursor after dictation finishes.
+    private var transcriptBinding: Binding<String> {
+        Binding(
+            get: {
+                engine.polishedTranscript.isEmpty
+                    ? engine.liveTranscript
+                    : engine.polishedTranscript
+            },
+            set: { newValue in
+                if engine.polishedTranscript.isEmpty {
+                    engine.liveTranscript = newValue
+                } else {
+                    engine.polishedTranscript = newValue
                 }
-                .frame(maxWidth: .infinity, alignment: .leading)
-                .padding(.horizontal, 20)
-                .padding(.vertical, 16)
             }
-            .onChange(of: visibleTranscript) { _, _ in
-                withAnimation {
-                    proxy.scrollTo("transcript-bottom", anchor: .bottom)
-                }
+        )
+    }
+
+    private var transcriptArea: some View {
+        ZStack(alignment: .topLeading) {
+            // TextEditor gives us native iOS cursor, selection,
+            // copy/paste, magnifier, long-press menu, etc.
+            TextEditor(text: transcriptBinding)
+                .font(.system(.title3, design: .default))
+                .foregroundStyle(.primary)
+                .scrollContentBackground(.hidden)
+                .padding(.horizontal, 16)
+                .padding(.vertical, 12)
+                .disabled(engine.isRecording) // prevent edit while mic live
+
+            // Placeholder text shown when transcript is empty.
+            if visibleTranscript.isEmpty {
+                Text("Tap the mic and start speaking. Your words will appear here in real time.")
+                    .font(.body)
+                    .foregroundStyle(.secondary)
+                    .padding(.horizontal, 22)
+                    .padding(.vertical, 20)
+                    .allowsHitTesting(false)
             }
         }
     }
@@ -240,7 +255,13 @@ struct DictationView: View {
                     title: "Select All",
                     systemImage: "selection.pin.in.out"
                 ) {
-                    UIPasteboard.general.string = visibleTranscript
+                    // Send UIResponder selectAll up the responder
+                    // chain — the focused TextEditor picks it up and
+                    // selects its entire contents.
+                    UIApplication.shared.sendAction(
+                        #selector(UIResponder.selectAll(_:)),
+                        to: nil, from: nil, for: nil
+                    )
                 }
                 .disabled(visibleTranscript.isEmpty)
 
@@ -268,6 +289,18 @@ struct DictationView: View {
                     engine.revertToRaw()
                 }
                 .disabled(!isShowingPolished || engine.isRecording)
+
+                ActionChip(
+                    title: "Redo",
+                    systemImage: "arrow.uturn.forward"
+                ) {
+                    engine.redoPolish()
+                }
+                .disabled(
+                    isShowingPolished
+                        || engine.cachedPolishedTranscript.isEmpty
+                        || engine.isRecording
+                )
 
                 ActionChip(
                     title: "Share",

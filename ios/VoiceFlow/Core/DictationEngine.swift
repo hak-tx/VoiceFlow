@@ -30,10 +30,18 @@ final class DictationEngine: ObservableObject {
     // MARK: - Published state
 
     /// Live, incrementally updating transcript shown while recording.
-    @Published private(set) var liveTranscript: String = ""
+    /// Writable so the UI's TextEditor can also mutate it when the
+    /// user edits after dictation.
+    @Published var liveTranscript: String = ""
 
     /// Clean, AI-polished transcript. Populated after `polish()`.
-    @Published private(set) var polishedTranscript: String = ""
+    /// Writable for manual UI editing.
+    @Published var polishedTranscript: String = ""
+
+    /// Snapshot of the most recent polished transcript. Unlike
+    /// `polishedTranscript` this is not cleared by revertToRaw(), so
+    /// the UI's Redo button can restore it.
+    @Published private(set) var cachedPolishedTranscript: String = ""
 
     /// True while the microphone is actively capturing audio.
     @Published private(set) var isRecording: Bool = false
@@ -144,6 +152,7 @@ final class DictationEngine: ObservableObject {
         stitchedSegments.removeAll()
         liveTranscript = ""
         polishedTranscript = ""
+        cachedPolishedTranscript = ""
         errorMessage = nil
         lastCommandConfirmation = nil
 
@@ -197,9 +206,17 @@ final class DictationEngine: ObservableObject {
     }
 
     /// Replace the visible transcript with the raw stitched version
-    /// (undo the AI polish step).
+    /// (undo the AI polish step). The polished copy stays in
+    /// `cachedPolishedTranscript` so Redo can restore it.
     func revertToRaw() {
         polishedTranscript = ""
+    }
+
+    /// Reapply the last cached polished transcript. Counterpart to
+    /// `revertToRaw()` — used by the Redo button in the action bar.
+    func redoPolish() {
+        guard !cachedPolishedTranscript.isEmpty else { return }
+        polishedTranscript = cachedPolishedTranscript
     }
 
     /// Wipe everything — used by the "clear" voice command and the
@@ -207,6 +224,7 @@ final class DictationEngine: ObservableObject {
     func clearBuffers() {
         liveTranscript = ""
         polishedTranscript = ""
+        cachedPolishedTranscript = ""
         stitchedSegments.removeAll()
     }
 
@@ -438,6 +456,7 @@ final class DictationEngine: ObservableObject {
         do {
             let cleaned = try await ClaudeCleanup.shared.clean(request)
             polishedTranscript = cleaned
+            cachedPolishedTranscript = cleaned
             usageTracker?.recordCleanup(
                 wordCount: wordCount(cleaned),
                 tonePreset: tonePreset,
