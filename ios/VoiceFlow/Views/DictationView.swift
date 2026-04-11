@@ -58,6 +58,8 @@ struct DictationView: View {
         NavigationStack {
             VStack(spacing: 0) {
                 quickDictateCTA
+                toneRow
+                vocabPacksCTA
                 transcriptArea
                 Divider()
                 actionBar
@@ -77,20 +79,12 @@ struct DictationView: View {
                     .accessibilityLabel("Settings")
                 }
                 ToolbarItem(placement: .topBarTrailing) {
-                    HStack {
-                        Button {
-                            showingRecent = true
-                        } label: {
-                            Image(systemName: "clock.arrow.circlepath")
-                        }
-                        .accessibilityLabel("Recent dictations")
-                        Button {
-                            showingPacks = true
-                        } label: {
-                            Image(systemName: "books.vertical")
-                        }
-                        .accessibilityLabel("Vocab packs")
+                    Button {
+                        showingRecent = true
+                    } label: {
+                        Image(systemName: "clock.arrow.circlepath")
                     }
+                    .accessibilityLabel("Recent dictations")
                 }
             }
             .sheet(isPresented: $showingPacks) {
@@ -198,6 +192,138 @@ struct DictationView: View {
         .padding(.horizontal, 16)
         .padding(.top, 12)
         .padding(.bottom, 8)
+    }
+
+    // MARK: - Tone preset row
+
+    /// Front-and-center horizontal row of tone presets. Each chip
+    /// shows its icon + name; the active one is highlighted. Pro-
+    /// only tones are tagged and route to the paywall on tap.
+    private var toneRow: some View {
+        VStack(alignment: .leading, spacing: 6) {
+            HStack(spacing: 6) {
+                Text("TONE")
+                    .font(.caption2.weight(.semibold))
+                    .foregroundStyle(.secondary)
+                    .tracking(1)
+                Text("— how aggressively should AI clean up?")
+                    .font(.caption2)
+                    .foregroundStyle(.tertiary)
+            }
+            .padding(.horizontal, 16)
+
+            ScrollView(.horizontal, showsIndicators: false) {
+                HStack(spacing: 8) {
+                    ForEach(TonePreset.allCases) { preset in
+                        toneChip(preset)
+                    }
+                }
+                .padding(.horizontal, 16)
+                .padding(.vertical, 2)
+            }
+        }
+        .padding(.bottom, 8)
+    }
+
+    @ViewBuilder
+    private func toneChip(_ preset: TonePreset) -> some View {
+        let isActive = engine.tonePreset == preset
+        let isGated = preset.requiresPro && !entitlements.hasPro
+
+        Button {
+            if isGated {
+                paywallReason = .proFeatureGated(name: preset.title + " tone")
+                showingPaywall = true
+            } else {
+                engine.tonePreset = preset
+            }
+        } label: {
+            HStack(spacing: 6) {
+                Image(systemName: preset.symbolName)
+                    .font(.system(size: 13, weight: .semibold))
+                Text(preset.title)
+                    .font(.subheadline.weight(isActive ? .semibold : .regular))
+                if isGated {
+                    Text("PRO")
+                        .font(.system(size: 9, weight: .bold))
+                        .padding(.horizontal, 5)
+                        .padding(.vertical, 2)
+                        .background(Color.accentColor.opacity(0.2))
+                        .clipShape(Capsule())
+                }
+            }
+            .foregroundStyle(isActive ? Color.white : Color.primary)
+            .padding(.horizontal, 12)
+            .padding(.vertical, 8)
+            .background(
+                RoundedRectangle(cornerRadius: 10, style: .continuous)
+                    .fill(isActive ? Color.accentColor : Color(.secondarySystemBackground))
+            )
+        }
+        .buttonStyle(.plain)
+    }
+
+    // MARK: - Vocab packs CTA (Pro upsell)
+
+    /// Explains what vocab packs do and routes to the picker /
+    /// paywall. Replaces the old cryptic book icon in the toolbar.
+    private var vocabPacksCTA: some View {
+        Button {
+            showingPacks = true
+        } label: {
+            HStack(spacing: 12) {
+                Image(systemName: "books.vertical.fill")
+                    .font(.system(size: 22, weight: .semibold))
+                    .foregroundStyle(Color.accentColor)
+                    .frame(width: 32)
+                VStack(alignment: .leading, spacing: 2) {
+                    HStack(spacing: 6) {
+                        Text(activeVocabPackHeadline)
+                            .font(.subheadline.weight(.semibold))
+                        if !entitlements.hasPro {
+                            Text("PRO")
+                                .font(.system(size: 9, weight: .bold))
+                                .padding(.horizontal, 5)
+                                .padding(.vertical, 2)
+                                .background(Color.accentColor.opacity(0.2))
+                                .clipShape(Capsule())
+                        }
+                    }
+                    Text(activeVocabPackSubtitle)
+                        .font(.caption2)
+                        .foregroundStyle(.secondary)
+                        .lineLimit(2)
+                }
+                Spacer()
+                Image(systemName: "chevron.right")
+                    .font(.caption2)
+                    .foregroundStyle(.tertiary)
+            }
+            .padding(12)
+            .background(
+                RoundedRectangle(cornerRadius: 12, style: .continuous)
+                    .fill(Color(.secondarySystemBackground))
+            )
+            .foregroundStyle(.primary)
+        }
+        .buttonStyle(.plain)
+        .padding(.horizontal, 16)
+        .padding(.bottom, 8)
+    }
+
+    private var activeVocabPackHeadline: String {
+        let n = vocabManager.activePackNames.count
+        if n == 0 {
+            return "Industry Vocabulary"
+        }
+        return "\(n) vocab pack\(n == 1 ? "" : "s") active"
+    }
+
+    private var activeVocabPackSubtitle: String {
+        if vocabManager.activePackNames.isEmpty {
+            return "Unlock legal, medical, finance, construction terms Claude will preserve verbatim."
+        }
+        return "Tap to manage. Active packs shape the AI cleanup to your field."
     }
 
     // MARK: - Transcript
@@ -309,13 +435,6 @@ struct DictationView: View {
                     showingShareSheet = true
                 }
                 .disabled(visibleTranscript.isEmpty)
-
-                ActionChip(
-                    title: engine.tonePreset.title,
-                    systemImage: engine.tonePreset.symbolName
-                ) {
-                    showingTonePicker = true
-                }
             }
             .padding(.horizontal, 16)
             .padding(.vertical, 10)

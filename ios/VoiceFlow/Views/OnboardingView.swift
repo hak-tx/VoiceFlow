@@ -18,6 +18,7 @@
 import SwiftUI
 import Speech
 import AVFoundation
+import UIKit
 
 struct OnboardingView: View {
     @EnvironmentObject var settings: AppSettings
@@ -26,6 +27,8 @@ struct OnboardingView: View {
 
     @State private var step: Int = 0
 
+    private let totalSteps = 7
+
     var body: some View {
         VStack(spacing: 0) {
             TabView(selection: $step) {
@@ -33,8 +36,9 @@ struct OnboardingView: View {
                 step2_Permissions.tag(1)
                 step3_ActionButton.tag(2)
                 step4_PasteTargets.tag(3)
-                step5_GuidedDictation.tag(4)
-                step6_UniversalClipboard.tag(5)
+                step5_Keyboard.tag(4)
+                step6_GuidedDictation.tag(5)
+                step7_UniversalClipboard.tag(6)
             }
             .tabViewStyle(.page(indexDisplayMode: .never))
 
@@ -120,7 +124,75 @@ struct OnboardingView: View {
         }
     }
 
-    private var step5_GuidedDictation: some View {
+    private var step5_Keyboard: some View {
+        OnboardingSlide(
+            icon: "keyboard.fill",
+            title: "Install the VoiceFlow keyboard.",
+            message:"""
+            Works in consumer apps that aren't MDM-locked (Messages, \
+            Safari, Notes). Full Access is required so the keyboard \
+            can send your speech to Claude for cleanup — your voice \
+            and text never go anywhere else.
+            """
+        ) {
+            VStack(alignment: .leading, spacing: 10) {
+                keyboardStep(
+                    n: 1,
+                    icon: "gearshape.fill",
+                    text: "Open the iOS Settings app."
+                )
+                keyboardStep(
+                    n: 2,
+                    icon: "chevron.right",
+                    text: "General → Keyboard → Keyboards → Add New Keyboard…"
+                )
+                keyboardStep(
+                    n: 3,
+                    icon: "plus.app.fill",
+                    text: "Tap VoiceFlow under Third-Party Keyboards."
+                )
+                keyboardStep(
+                    n: 4,
+                    icon: "checkmark.shield.fill",
+                    text: "Tap VoiceFlow in the list, then toggle Allow Full Access ON."
+                )
+
+                Button {
+                    if let url = URL(string: UIApplication.openSettingsURLString) {
+                        UIApplication.shared.open(url)
+                    }
+                } label: {
+                    Text("Open iOS Settings")
+                        .font(.subheadline.weight(.semibold))
+                        .frame(maxWidth: .infinity)
+                        .padding(.vertical, 12)
+                        .background(Color.accentColor)
+                        .foregroundStyle(.white)
+                        .clipShape(RoundedRectangle(cornerRadius: 10, style: .continuous))
+                }
+                .padding(.top, 6)
+            }
+            .padding(.top, 4)
+        }
+    }
+
+    private func keyboardStep(n: Int, icon: String, text: String) -> some View {
+        HStack(alignment: .center, spacing: 10) {
+            Text("\(n)")
+                .font(.caption.weight(.bold))
+                .frame(width: 22, height: 22)
+                .foregroundStyle(.white)
+                .background(Circle().fill(Color.accentColor))
+            Image(systemName: icon)
+                .foregroundStyle(Color.accentColor)
+                .frame(width: 20)
+            Text(text)
+                .font(.subheadline)
+            Spacer()
+        }
+    }
+
+    private var step6_GuidedDictation: some View {
         OnboardingSlide(
             icon: "checkmark.circle",
             title: "Try it — dictate something and paste into Notes.",
@@ -135,7 +207,7 @@ struct OnboardingView: View {
         }
     }
 
-    private var step6_UniversalClipboard: some View {
+    private var step7_UniversalClipboard: some View {
         OnboardingSlide(
             icon: "laptopcomputer.and.iphone",
             title: "Bonus: Universal Clipboard.",
@@ -153,7 +225,7 @@ struct OnboardingView: View {
 
     private var controlRow: some View {
         VStack(spacing: 12) {
-            ProgressDots(total: 6, current: step)
+            ProgressDots(total: totalSteps, current: step)
             HStack {
                 if step > 0 {
                     Button("Back") { step -= 1 }
@@ -161,13 +233,13 @@ struct OnboardingView: View {
                 }
                 Spacer()
                 Button {
-                    if step < 5 {
+                    if step < totalSteps - 1 {
                         step += 1
                     } else {
                         settings.onboardingDone = true
                     }
                 } label: {
-                    Text(step < 5 ? "Next" : "Get Started")
+                    Text(step < totalSteps - 1 ? "Next" : "Get Started")
                         .font(.headline)
                         .padding(.horizontal, 24)
                         .padding(.vertical, 12)
