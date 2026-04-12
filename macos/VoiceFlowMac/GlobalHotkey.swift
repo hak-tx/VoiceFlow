@@ -3,17 +3,20 @@
 //  VoiceFlowMac
 //
 //  Double-tap Control (^) to toggle dictation globally.
-//
-//  Uses CGEventTap at the HID level — the most reliable way to
-//  detect modifier-only key events on macOS. NSEvent monitors miss
-//  flagsChanged events in many scenarios.
-//
-//  Requires Accessibility permissions (System Settings → Privacy
-//  & Security → Accessibility).
+//  Tries CGEventTap first (most reliable), falls back to NSEvent
+//  monitors if the tap can't be created.
 //
 
 import AppKit
 import CoreGraphics
+
+// Shared state for the CGEvent callback (runs outside MainActor).
+enum HotkeyState {
+    nonisolated(unsafe) static var lastControlDownTime: CFAbsoluteTime = 0
+    nonisolated(unsafe) static var controlWasDown: Bool = false
+    nonisolated(unsafe) static var shouldToggle: Bool = false
+    nonisolated(unsafe) static var configuredInterval: TimeInterval = 0.4
+}
 
 @MainActor
 final class GlobalHotkeyManager: ObservableObject {
@@ -22,6 +25,7 @@ final class GlobalHotkeyManager: ObservableObject {
 
     @Published private(set) var isRegistered: Bool = false
     @Published private(set) var hasAccessibilityPermission: Bool = false
+    @Published var statusMessage: String = ""
 
     var doubleTapInterval: TimeInterval = 0.4
 
@@ -29,9 +33,15 @@ final class GlobalHotkeyManager: ObservableObject {
     private var runLoopSource: CFRunLoopSource?
     private var pollTimer: Timer?
 
-    init() {
-        checkAccessibilityPermission()
-    }
+    // NSEvent fallback monitors
+    private var globalMonitor: Any?
+    private var localMonitor: Any?
+
+    // For NSEvent-based double-tap detection
+    private var nsLastControlDown: Date?
+    private var nsControlIsDown: Bool = false
+
+    init() {}
 
     deinit {
         if let source = runLoopSource {
@@ -41,48 +51,29 @@ final class GlobalHotkeyManager: ObservableObject {
             CGEvent.tapEnable(tap: tap, enable: false)
         }
         pollTimer?.invalidate()
+        if let g = globalMonitor { NSEvent.removeMonitor(g) }
+        if let l = localMonitor { NSEvent.removeMonitor(l) }
+    }
+
+    func setup() {
+        checkAccessibilityPermission()
+        register()
     }
 
     func register() {
         unregister()
-
         HotkeyState.configuredInterval = doubleTapInterval
 
-        // Create a CGEvent tap for flagsChanged events.
-        let mask: CGEventMask = (1 << CGEventType.flagsChanged.rawValue)
-
-        guard let tap = CGEvent.tapCreate(
-            tap: .cgSessionEventTap,
-            place: .headInsertEventTap,
-            options: .listenOnly,  // don't block events
-            eventsOfInterest: mask,
-            callback: globalHotkeyCallback,
-            userInfo: nil
-        ) else {
-            // Tap creation failed — no Accessibility permission.
-            hasAccessibilityPermission = false
+        // Try CGEventTap first — most reliable for global monitoring.
+        if tryRegisterCGEventTap() {
+            statusMessage = "Hotkey: Control×2 (CGEventTap)"
+            isRegistered = true
             return
         }
 
-        eventTap = tap
-        hasAccessibilityPermission = true
-
-        let source = CFMachPortCreateRunLoopSource(nil, tap, 0)
-        runLoopSource = source
-        CFRunLoopAddSource(CFRunLoopGetMain(), source, .commonModes)
-        CGEvent.tapEnable(tap: tap, enable: true)
-
-        // Poll for toggle requests from the callback (which runs
-        // on a non-main-actor context).
-        pollTimer = Timer.scheduledTimer(withTimeInterval: 0.05, repeats: true) { [weak self] _ in
-            Task { @MainActor in
-                if HotkeyState.shouldToggle {
-                    HotkeyState.shouldToggle = false
-                    self?.engine?.toggle()
-                }
-            }
-        }
-
+        // Fallback: NSEvent monitors.
+        registerNSEventMonitors()
+        statusMessage = "Hotkey: Control×2 (NSEvent fallback)"
         isRegistered = true
     }
 
@@ -97,38 +88,106 @@ final class GlobalHotkeyManager: ObservableObject {
         }
         pollTimer?.invalidate()
         pollTimer = nil
+        if let g = globalMonitor {
+            NSEvent.removeMonitor(g)
+            globalMonitor = nil
+        }
+        if let l = localMonitor {
+            NSEvent.removeMonitor(l)
+            localMonitor = nil
+        }
         isRegistered = false
     }
+
+    // MARK: - CGEventTap approach
+
+    private func tryRegisterCGEventTap() -> Bool {
+        let mask: CGEventMask = (1 << CGEventType.flagsChanged.rawValue)
+
+        guard let tap = CGEvent.tapCreate(
+            tap: .cgSessionEventTap,
+            place: .headInsertEventTap,
+            options: .listenOnly,
+            eventsOfInterest: mask,
+            callback: globalHotkeyCallback,
+            userInfo: nil
+        ) else {
+            statusMessage = "CGEventTap failed — using NSEvent fallback"
+            return false
+        }
+
+        eventTap = tap
+        let source = CFMachPortCreateRunLoopSource(nil, tap, 0)
+        runLoopSource = source
+        CFRunLoopAddSource(CFRunLoopGetMain(), source, .commonModes)
+        CGEvent.tapEnable(tap: tap, enable: true)
+
+        // Poll for toggle requests from the C callback.
+        pollTimer = Timer.scheduledTimer(withTimeInterval: 0.05, repeats: true) { [weak self] _ in
+            Task { @MainActor in
+                if HotkeyState.shouldToggle {
+                    HotkeyState.shouldToggle = false
+                    self?.engine?.toggle()
+                }
+            }
+        }
+
+        return true
+    }
+
+    // MARK: - NSEvent fallback
+
+    private func registerNSEventMonitors() {
+        globalMonitor = NSEvent.addGlobalMonitorForEvents(matching: .flagsChanged) { [weak self] event in
+            Task { @MainActor in
+                self?.handleNSFlags(event)
+            }
+        }
+        localMonitor = NSEvent.addLocalMonitorForEvents(matching: .flagsChanged) { [weak self] event in
+            Task { @MainActor in
+                self?.handleNSFlags(event)
+            }
+            return event
+        }
+    }
+
+    private func handleNSFlags(_ event: NSEvent) {
+        let controlNow = event.modifierFlags.contains(.control)
+        let others: NSEvent.ModifierFlags = [.command, .option, .shift]
+        let hasOthers = !event.modifierFlags.intersection(others).isEmpty
+
+        if controlNow && !nsControlIsDown && !hasOthers {
+            nsControlIsDown = true
+            let now = Date()
+            if let last = nsLastControlDown,
+               now.timeIntervalSince(last) <= doubleTapInterval {
+                nsLastControlDown = nil
+                engine?.toggle()
+            } else {
+                nsLastControlDown = now
+            }
+        } else if !controlNow && nsControlIsDown {
+            nsControlIsDown = false
+        }
+    }
+
+    // MARK: - Accessibility
 
     func checkAccessibilityPermission() {
         let trusted = AXIsProcessTrustedWithOptions(
             [kAXTrustedCheckOptionPrompt.takeUnretainedValue(): true] as CFDictionary
         )
         hasAccessibilityPermission = trusted
-        if trusted && !isRegistered {
-            register()
-        }
     }
 }
 
-// Shared mutable state bridging the CGEvent callback (which runs on
-// a background runloop, outside MainActor) and the MainActor poll
-// timer. Simple value types — no lock needed for this use case.
-enum HotkeyState {
-    nonisolated(unsafe) static var lastControlDownTime: CFAbsoluteTime = 0
-    nonisolated(unsafe) static var controlWasDown: Bool = false
-    nonisolated(unsafe) static var shouldToggle: Bool = false
-    nonisolated(unsafe) static var configuredInterval: TimeInterval = 0.4
-}
-
-// C-function callback for CGEvent tap — runs outside MainActor.
+// C callback for CGEventTap.
 private func globalHotkeyCallback(
     proxy: CGEventTapProxy,
     type: CGEventType,
     event: CGEvent,
     userInfo: UnsafeMutableRawPointer?
 ) -> Unmanaged<CGEvent>? {
-
     guard type == .flagsChanged else {
         return Unmanaged.passRetained(event)
     }
@@ -141,9 +200,8 @@ private func globalHotkeyCallback(
         HotkeyState.controlWasDown = true
         let now = CFAbsoluteTimeGetCurrent()
         let last = HotkeyState.lastControlDownTime
-        let interval = HotkeyState.configuredInterval
 
-        if (now - last) <= interval && last > 0 {
+        if (now - last) <= HotkeyState.configuredInterval && last > 0 {
             HotkeyState.shouldToggle = true
             HotkeyState.lastControlDownTime = 0
         } else {

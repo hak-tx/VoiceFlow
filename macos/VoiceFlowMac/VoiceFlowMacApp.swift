@@ -22,7 +22,7 @@ struct VoiceFlowMacApp: App {
                 .environmentObject(engine)
                 .task {
                     hotkeyManager.engine = engine
-                    hotkeyManager.checkAccessibilityPermission()
+                    hotkeyManager.setup()
                 }
         } label: {
             // Branded "V" icon — unique to VoiceFlow, doesn't clash
