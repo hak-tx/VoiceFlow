@@ -2,17 +2,13 @@
 //  AppCoordinator.swift
 //  VoiceFlowMac
 //
-//  Core dictation flow:
-//    1. ⌃⌃ → recording starts, overlay shows live transcript
-//    2. User speaks → transcript updates in overlay
-//    3. ⌃⌃ → stops, sends to Claude Haiku for cleanup
-//    4. Cleaned text inserted at cursor via single Cmd+V paste
+//  Flow:
+//    1. ⌃⌃ → recording starts, tiny "Recording" pill appears
+//    2. Text streams LIVE at the cursor as user speaks
+//    3. ⌃⌃ → stops, raw text replaced with LLM-cleaned version
 //
-//  Text is NOT streamed to the cursor during recording. That approach
-//  (AX replaceRange on every partial result) is unreliable — causes
-//  duplication, doesn't work in all apps, and race-condition-prone.
-//  Instead, the user sees their live transcript in the overlay, and
-//  the final cleaned result is pasted once.
+//  Text goes at the cursor. Nowhere else. The overlay is just a
+//  tiny status pill — no transcript in it.
 //
 
 import Foundation
@@ -36,6 +32,15 @@ final class AppCoordinator: ObservableObject {
     @Published var lastPolishError: String?
     @Published var statusMessage: String?
 
+    /// How many chars we've inserted at the cursor so far.
+    private var insertedCharCount: Int = 0
+    /// Where we started inserting.
+    private var insertionStart: Int = 0
+    /// Observe transcript changes.
+    private var transcriptObserver: AnyCancellable?
+    /// The focused AX element we're typing into.
+    private var lastTranscriptPushed: String = ""
+
     init() {
         self.settings = MacAppSettings()
         self.engine = MacDictationEngine()
@@ -56,12 +61,11 @@ final class AppCoordinator: ObservableObject {
 
         hotkeyManager.onActivate = { [weak self] in
             guard let self else { return }
-            Task { @MainActor in await self.hotkeyPressed() }
+            Task { @MainActor in await self.hotkeyToggle() }
         }
-
         hotkeyManager.onDeactivate = { [weak self] in
             guard let self else { return }
-            Task { @MainActor in await self.hotkeyPressed() }
+            Task { @MainActor in await self.hotkeyToggle() }
         }
 
         engine.onPolishComplete = { [weak self] text in
@@ -71,22 +75,22 @@ final class AppCoordinator: ObservableObject {
 
         engine.onSilenceDetected = { [weak self] in
             guard let self else { return }
-            Task { @MainActor in await self.stopAndClean() }
+            Task { @MainActor in await self.stopRecording() }
         }
 
         hotkeyManager.install()
 
         Task {
             await vocabManager.loadInstalledPacks()
-            log.info("Loaded \(self.vocabManager.installedPacks.count) packs, \(self.vocabManager.activePackNames.count) active")
+            log.info("Loaded \(self.vocabManager.installedPacks.count) packs")
         }
     }
 
-    // MARK: - Hotkey toggle
+    // MARK: - Hotkey
 
-    private func hotkeyPressed() async {
+    private func hotkeyToggle() async {
         if engine.isRecording {
-            await stopAndClean()
+            await stopRecording()
         } else {
             await startRecording()
         }
@@ -98,13 +102,19 @@ final class AppCoordinator: ObservableObject {
         log.info("Starting dictation")
         lastPolishError = nil
         statusMessage = nil
+        lastTranscriptPushed = ""
 
-        // Capture cursor position for the overlay placement.
+        // Capture where the cursor is RIGHT NOW.
         accessibilityManager.captureCurrentContext()
+        insertionStart = accessibilityManager.selectedRange.location
+        insertedCharCount = 0
 
         await engine.start()
 
-        // Show overlay near cursor with live transcript.
+        // Start pushing transcript to cursor.
+        startCursorStreaming()
+
+        // Show tiny pill near cursor.
         overlayController.show(
             near: accessibilityManager.cursorRect,
             engine: engine,
@@ -112,32 +122,103 @@ final class AppCoordinator: ObservableObject {
         )
     }
 
-    // MARK: - Stop and clean
+    // MARK: - Stop
 
-    private func stopAndClean() async {
-        log.info("Stopping dictation — sending to Claude")
+    private func stopRecording() async {
+        log.info("Stopping dictation")
+        stopCursorStreaming()
         await engine.stop()
-        // engine.stop() calls polish() internally, which triggers
-        // onPolishComplete when done.
+        // engine.stop() triggers polish(), which calls onPolishComplete
     }
 
-    // MARK: - Polish complete → paste at cursor
+    // MARK: - Stream text to cursor
+
+    private func startCursorStreaming() {
+        transcriptObserver = engine.$liveTranscript
+            .debounce(for: .milliseconds(100), scheduler: DispatchQueue.main)
+            .sink { [weak self] transcript in
+                guard let self, self.engine.isRecording else { return }
+                guard transcript != self.lastTranscriptPushed else { return }
+                self.streamToCursor(transcript)
+                self.lastTranscriptPushed = transcript
+            }
+    }
+
+    private func stopCursorStreaming() {
+        transcriptObserver?.cancel()
+        transcriptObserver = nil
+    }
+
+    private func streamToCursor(_ fullTranscript: String) {
+        if insertedCharCount == 0 && !fullTranscript.isEmpty {
+            // First insert — just type the text.
+            accessibilityManager.insertTextDirect(fullTranscript)
+            insertedCharCount = fullTranscript.count
+            log.debug("First insert: \(fullTranscript.count) chars")
+        } else if insertedCharCount > 0 {
+            // Replace previously inserted text with updated transcript.
+            let range = CFRange(
+                location: insertionStart,
+                length: insertedCharCount
+            )
+            let success = accessibilityManager.replaceRangeDirect(range, with: fullTranscript)
+            if success {
+                insertedCharCount = fullTranscript.count
+            } else {
+                log.warning("AX replace failed — skipping this update (no fallback)")
+                // Do NOT fall back to clipboard paste. That causes duplication.
+            }
+        }
+    }
+
+    // MARK: - Polish complete
 
     private func handlePolishComplete(_ text: String) {
         log.info("Polish complete — \(text.count) chars")
 
         guard !text.isEmpty else {
-            log.warning("Polish returned empty text")
+            log.warning("Polish returned empty")
             overlayController.dismiss()
             hotkeyManager.deactivate()
             return
         }
 
-        // Copy to clipboard.
-        NSPasteboard.general.clearContents()
-        NSPasteboard.general.setString(text, forType: .string)
+        // Replace the raw text at cursor with cleaned version.
+        if insertedCharCount > 0 {
+            let range = CFRange(
+                location: insertionStart,
+                length: insertedCharCount
+            )
+            let success = accessibilityManager.replaceRangeDirect(range, with: text)
+            if success {
+                insertedCharCount = text.count
+            } else {
+                // AX failed — fall back to clipboard paste for final result only.
+                NSPasteboard.general.clearContents()
+                NSPasteboard.general.setString(text, forType: .string)
+                simulatePaste()
+                log.info("Fell back to Cmd+V for final insert")
+            }
+        } else {
+            // Nothing was inserted during recording (maybe AX wasn't available).
+            // Just paste the result.
+            NSPasteboard.general.clearContents()
+            NSPasteboard.general.setString(text, forType: .string)
+            simulatePaste()
+        }
 
-        // Paste at cursor with Cmd+V.
+        if settings.playSoundEffects {
+            NSSound(named: "Blow")?.play()
+        }
+
+        Task {
+            try? await Task.sleep(nanoseconds: 500_000_000)
+            overlayController.dismiss()
+            hotkeyManager.deactivate()
+        }
+    }
+
+    private func simulatePaste() {
         let source = CGEventSource(stateID: .hidSystemState)
         let keyDown = CGEvent(keyboardEventSource: source, virtualKey: 0x09, keyDown: true)
         keyDown?.flags = .maskCommand
@@ -145,36 +226,17 @@ final class AppCoordinator: ObservableObject {
         keyUp?.flags = .maskCommand
         keyDown?.post(tap: .cghidEventTap)
         keyUp?.post(tap: .cghidEventTap)
-
-        statusMessage = "Pasted at cursor"
-        log.info("Text pasted via Cmd+V")
-
-        if settings.playSoundEffects {
-            NSSound(named: "Blow")?.play()
-        }
-
-        // Dismiss overlay after brief delay.
-        Task {
-            try? await Task.sleep(nanoseconds: 600_000_000)
-            overlayController.dismiss()
-            hotkeyManager.deactivate()
-        }
     }
 
-    // MARK: - Popover mic button
+    // MARK: - Popover controls
 
     func startFromPopover() async {
-        log.info("Starting from popover")
-        lastPolishError = nil
-        statusMessage = nil
-        await engine.start()
+        await startRecording()
     }
 
     func stopFromPopover() async {
-        await stopAndClean()
+        await stopRecording()
     }
-
-    // MARK: - Retry
 
     func retryPolish() async {
         guard !engine.liveTranscript.isEmpty else { return }

@@ -158,6 +158,54 @@ final class AccessibilityTextManager: ObservableObject {
         }
     }
 
+    // MARK: - Direct methods (no clipboard fallback)
+    // Used during live streaming to prevent duplication.
+
+    /// Insert text at cursor. Returns false if AX isn't available.
+    /// Does NOT fall back to clipboard paste.
+    @discardableResult
+    func insertTextDirect(_ text: String) -> Bool {
+        guard let focused = focusedTextElement() else {
+            log.info("insertTextDirect: no focused element")
+            return false
+        }
+        let result = AXUIElementSetAttributeValue(
+            focused,
+            kAXSelectedTextAttribute as CFString,
+            text as CFTypeRef
+        )
+        return result == .success
+    }
+
+    /// Replace a range with new text. Returns false if AX isn't available.
+    /// Does NOT fall back to clipboard paste.
+    @discardableResult
+    func replaceRangeDirect(_ range: CFRange, with text: String) -> Bool {
+        guard let focused = focusedTextElement() else {
+            log.info("replaceRangeDirect: no focused element")
+            return false
+        }
+        var mutableRange = range
+        guard let rangeValue = AXValueCreate(.cfRange, &mutableRange) else {
+            return false
+        }
+        let selectResult = AXUIElementSetAttributeValue(
+            focused,
+            kAXSelectedTextRangeAttribute as CFString,
+            rangeValue
+        )
+        guard selectResult == .success else {
+            log.warning("replaceRangeDirect: failed to set selection (error \(selectResult.rawValue))")
+            return false
+        }
+        let replaceResult = AXUIElementSetAttributeValue(
+            focused,
+            kAXSelectedTextAttribute as CFString,
+            text as CFTypeRef
+        )
+        return replaceResult == .success
+    }
+
     /// Get the text surrounding the current selection for splice context.
     /// Returns (textBefore, textAfter) — up to 200 chars on each side.
     func surroundingContext() -> (before: String, after: String) {
