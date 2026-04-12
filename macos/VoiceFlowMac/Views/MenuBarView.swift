@@ -3,151 +3,38 @@
 //  VoiceFlowMac
 //
 //  The primary UI surface — a popover window from the menu bar icon.
-//  Shows:
-//    - Current state (idle / recording / polishing / done)
-//    - Tone preset quick-switcher
-//    - Active vocab packs summary
-//    - Last transcript (editable after polish)
-//    - Action buttons (Copy, Clear, Re-dictate selection, etc.)
-//    - Quick links to Settings and Quit
-//
-//  The entire dictation lifecycle can be controlled from here, but
-//  the primary workflow is the global ⌃⌃ hotkey which triggers
-//  dictation without opening this popover.
+//  This is a PURE VIEW — it reads state from environment objects and
+//  dispatches actions to the AppCoordinator. No wiring happens here.
 //
 
 import SwiftUI
+import os.log
+
+private let log = Logger(subsystem: "com.hak-tx.voiceflow.mac", category: "MenuBarView")
 
 struct MenuBarView: View {
+    @EnvironmentObject var coordinator: AppCoordinator
     @EnvironmentObject var settings: MacAppSettings
     @EnvironmentObject var engine: MacDictationEngine
     @EnvironmentObject var vocabManager: MacVocabPackManager
     @EnvironmentObject var hotkeyManager: GlobalHotkeyManager
-    @EnvironmentObject var overlayController: OverlayPanelController
     @EnvironmentObject var accessibilityManager: AccessibilityTextManager
 
     @State private var showingVocabPicker = false
-    @State private var showingTonePicker = false
 
     var body: some View {
         VStack(spacing: 0) {
-            // Header
             header
             Divider()
-
-            // Tone quick-switcher
             toneRow
             Divider()
-
-            // Transcript area
             transcriptArea
-
             Divider()
-
-            // Action bar
             actionBar
-
             Divider()
-
-            // Footer controls
             footerControls
         }
         .frame(width: 380)
-        .onAppear {
-            wireDependencies()
-        }
-    }
-
-    // MARK: - Wiring
-
-    private func wireDependencies() {
-        // Wire engine dependencies.
-        engine.vocabManager = vocabManager
-        engine.settings = settings
-        engine.silenceThreshold = settings.silenceAutoStopSeconds
-
-        // Wire hotkey callbacks.
-        hotkeyManager.onActivate = { [weak engine, weak accessibilityManager, weak overlayController, weak settings] in
-            guard let engine, let accessibilityManager, let overlayController, let settings else { return }
-            Task { @MainActor in
-                // Snapshot what's at the cursor before we start.
-                accessibilityManager.captureCurrentContext()
-
-                // If there's selected text, enter replace mode.
-                if !accessibilityManager.selectedText.isEmpty {
-                    let ctx = accessibilityManager.surroundingContext()
-                    let range = NSRange(
-                        location: accessibilityManager.selectedRange.location,
-                        length: accessibilityManager.selectedRange.length
-                    )
-                    await engine.startReplacingSelection(
-                        in: accessibilityManager.fullText,
-                        range: range,
-                        before: ctx.before,
-                        after: ctx.after
-                    )
-                } else {
-                    await engine.start()
-                }
-
-                // Show the overlay near the cursor.
-                overlayController.show(
-                    near: accessibilityManager.cursorRect,
-                    engine: engine,
-                    settings: settings
-                )
-            }
-        }
-
-        hotkeyManager.onDeactivate = { [weak engine, weak overlayController, weak accessibilityManager, weak settings] in
-            guard let engine, let overlayController else { return }
-            Task { @MainActor in
-                await engine.stop()
-
-                // Wait briefly for polish to complete, then insert.
-                // The onPolishComplete callback handles the actual insertion.
-            }
-        }
-
-        // When polish completes, insert at cursor and dismiss overlay.
-        engine.onPolishComplete = { [weak accessibilityManager, weak overlayController, weak hotkeyManager, weak settings] text in
-            Task { @MainActor in
-                guard let accessibilityManager, let overlayController, let settings else { return }
-
-                if settings.autoInsertAfterPolish {
-                    accessibilityManager.insertText(text)
-                } else {
-                    // Just copy to clipboard.
-                    NSPasteboard.general.clearContents()
-                    NSPasteboard.general.setString(text, forType: .string)
-                }
-
-                // Play completion sound.
-                if settings.playSoundEffects {
-                    NSSound(named: "Blow")?.play()
-                }
-
-                // Brief delay so the user sees "DONE" in the overlay.
-                try? await Task.sleep(nanoseconds: 800_000_000)
-                overlayController.dismiss()
-                hotkeyManager?.deactivate()
-            }
-        }
-
-        // Silence auto-stop.
-        engine.onSilenceDetected = { [weak engine] in
-            Task { @MainActor in
-                await engine?.stop()
-            }
-        }
-
-        // Install the global hotkey listener.
-        hotkeyManager.install()
-
-        // Load vocab packs.
-        Task {
-            await vocabManager.loadInstalledPacks()
-        }
     }
 
     // MARK: - Header
@@ -160,11 +47,9 @@ struct MenuBarView: View {
 
                 HStack(spacing: 4) {
                     Circle()
-                        .fill(hotkeyManager.hasAccessibilityPermission ? .green : .red)
+                        .fill(statusColor)
                         .frame(width: 6, height: 6)
-                    Text(hotkeyManager.hasAccessibilityPermission
-                         ? "Ready — ⌃⌃ to dictate"
-                         : "Accessibility permission needed")
+                    Text(statusMessage)
                         .font(.system(size: 10))
                         .foregroundStyle(.secondary)
                 }
@@ -177,7 +62,7 @@ struct MenuBarView: View {
                     Circle()
                         .fill(.red)
                         .frame(width: 8, height: 8)
-                        .opacity(0.8)
+                        .opacity(pulsingAnimation)
                     Text("Recording")
                         .font(.system(size: 11, weight: .semibold))
                         .foregroundStyle(.red)
@@ -186,6 +71,27 @@ struct MenuBarView: View {
         }
         .padding(.horizontal, 14)
         .padding(.vertical, 10)
+    }
+
+    @State private var pulsingAnimation: Double = 0.8
+
+    private var statusColor: Color {
+        if !hotkeyManager.hasAccessibilityPermission { return .red }
+        if engine.isRecording { return .orange }
+        if engine.errorMessage != nil { return .red }
+        return .green
+    }
+
+    private var statusMessage: String {
+        if !hotkeyManager.hasAccessibilityPermission {
+            return "Accessibility permission needed"
+        }
+        if let error = engine.errorMessage {
+            return error
+        }
+        if engine.isRecording { return "Recording — ⌃⌃ to stop" }
+        if engine.isPolishing { return "Cleaning up with Claude..." }
+        return "Ready — ⌃⌃ to dictate"
     }
 
     // MARK: - Tone row
@@ -241,13 +147,18 @@ struct MenuBarView: View {
                     .padding(.horizontal, 14)
             }
 
-            if engine.visibleTranscript.isEmpty && !engine.isRecording {
-                Text("Press ⌃⌃ (Control twice) to start dictating.\nText appears here and inserts at your cursor.")
-                    .font(.system(size: 12))
-                    .foregroundStyle(.tertiary)
-                    .multilineTextAlignment(.center)
-                    .frame(maxWidth: .infinity)
-                    .padding(.vertical, 20)
+            if engine.visibleTranscript.isEmpty && !engine.isRecording && !engine.isPolishing {
+                VStack(spacing: 8) {
+                    Text("Press ⌃⌃ (Control twice) to start dictating.")
+                        .font(.system(size: 12))
+                        .foregroundStyle(.tertiary)
+                    Text("Text appears here and inserts at your cursor.")
+                        .font(.system(size: 11))
+                        .foregroundStyle(.quaternary)
+                }
+                .multilineTextAlignment(.center)
+                .frame(maxWidth: .infinity)
+                .padding(.vertical, 20)
             } else {
                 ScrollView {
                     Text(engine.visibleTranscript.isEmpty ? "Listening..." : engine.visibleTranscript)
@@ -270,6 +181,20 @@ struct MenuBarView: View {
                     }
                     .padding(.horizontal, 14)
                 }
+
+                // Error + retry
+                if let error = coordinator.lastPolishError {
+                    VStack(spacing: 4) {
+                        Text(error)
+                            .font(.system(size: 10))
+                            .foregroundStyle(.red)
+                        Button("Retry Cleanup") {
+                            Task { await coordinator.retryPolish() }
+                        }
+                        .controlSize(.small)
+                    }
+                    .padding(.horizontal, 14)
+                }
             }
         }
         .padding(.vertical, 8)
@@ -289,6 +214,7 @@ struct MenuBarView: View {
 
             MenuActionButton(title: "Clear", systemImage: "xmark.circle") {
                 engine.clearBuffers()
+                coordinator.lastPolishError = nil
             }
             .disabled(engine.visibleTranscript.isEmpty)
 
@@ -308,24 +234,9 @@ struct MenuBarView: View {
             Button {
                 Task {
                     if engine.isRecording {
-                        await engine.stop()
+                        await coordinator.stopDictationManually()
                     } else {
-                        accessibilityManager.captureCurrentContext()
-                        if !accessibilityManager.selectedText.isEmpty {
-                            let ctx = accessibilityManager.surroundingContext()
-                            let range = NSRange(
-                                location: accessibilityManager.selectedRange.location,
-                                length: accessibilityManager.selectedRange.length
-                            )
-                            await engine.startReplacingSelection(
-                                in: accessibilityManager.fullText,
-                                range: range,
-                                before: ctx.before,
-                                after: ctx.after
-                            )
-                        } else {
-                            await engine.start()
-                        }
+                        await coordinator.startDictationManually()
                     }
                 }
             } label: {
@@ -378,7 +289,11 @@ struct MenuBarView: View {
             }
 
             Button {
-                NSApp.sendAction(Selector(("showSettingsWindow:")), to: nil, from: nil)
+                if #available(macOS 14.0, *) {
+                    NSApp.sendAction(Selector(("showSettingsWindow:")), to: nil, from: nil)
+                } else {
+                    NSApp.sendAction(Selector(("showPreferencesWindow:")), to: nil, from: nil)
+                }
             } label: {
                 Image(systemName: "gearshape")
                     .font(.system(size: 11))

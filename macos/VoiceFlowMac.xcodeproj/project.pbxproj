@@ -17,6 +17,7 @@
 		A10003007 /* MacDictationEngine.swift in Sources */ = {isa = PBXBuildFile; fileRef = A10003006 /* MacDictationEngine.swift */; };
 		A10003009 /* MacAppSettings.swift in Sources */ = {isa = PBXBuildFile; fileRef = A10003008 /* MacAppSettings.swift */; };
 		A1000300B /* MacVocabPackManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = A1000300A /* MacVocabPackManager.swift */; };
+		A1000300D /* AppCoordinator.swift in Sources */ = {isa = PBXBuildFile; fileRef = A1000300C /* AppCoordinator.swift */; };
 		A10004001 /* MenuBarView.swift in Sources */ = {isa = PBXBuildFile; fileRef = A10004000 /* MenuBarView.swift */; };
 		A10004003 /* OverlayPanel.swift in Sources */ = {isa = PBXBuildFile; fileRef = A10004002 /* OverlayPanel.swift */; };
 		A10004005 /* MacSettingsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = A10004004 /* MacSettingsView.swift */; };
@@ -36,6 +37,7 @@
 		A10003006 /* MacDictationEngine.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MacDictationEngine.swift; sourceTree = "<group>"; };
 		A10003008 /* MacAppSettings.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MacAppSettings.swift; sourceTree = "<group>"; };
 		A1000300A /* MacVocabPackManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MacVocabPackManager.swift; sourceTree = "<group>"; };
+		A1000300C /* AppCoordinator.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppCoordinator.swift; sourceTree = "<group>"; };
 		A10004000 /* MenuBarView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MenuBarView.swift; sourceTree = "<group>"; };
 		A10004002 /* OverlayPanel.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = OverlayPanel.swift; sourceTree = "<group>"; };
 		A10004004 /* MacSettingsView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MacSettingsView.swift; sourceTree = "<group>"; };
@@ -113,6 +115,7 @@
 				A10003006 /* MacDictationEngine.swift */,
 				A10003008 /* MacAppSettings.swift */,
 				A1000300A /* MacVocabPackManager.swift */,
+				A1000300C /* AppCoordinator.swift */,
 			);
 			path = Core;
 			sourceTree = "<group>";
@@ -207,6 +210,7 @@
 				A10003007 /* MacDictationEngine.swift in Sources */,
 				A10003009 /* MacAppSettings.swift in Sources */,
 				A1000300B /* MacVocabPackManager.swift in Sources */,
+				A1000300D /* AppCoordinator.swift in Sources */,
 				A10004001 /* MenuBarView.swift in Sources */,
 				A10004003 /* OverlayPanel.swift in Sources */,
 				A10004005 /* MacSettingsView.swift in Sources */,

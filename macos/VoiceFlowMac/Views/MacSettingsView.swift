@@ -355,41 +355,100 @@ private struct PermissionRow: View {
 // MARK: - About
 
 struct AboutSettingsTab: View {
+
+    @State private var apiKeyInput: String = ""
+    @State private var isKeyConfigured: Bool = Secrets.isAPIKeyConfigured
+    @State private var showingSaveConfirmation = false
+
     var body: some View {
-        VStack(spacing: 20) {
-            Spacer()
+        VStack(spacing: 16) {
+            // App info
+            HStack(spacing: 16) {
+                Image(systemName: "waveform.circle.fill")
+                    .font(.system(size: 48))
+                    .foregroundStyle(.accentColor)
 
-            Image(systemName: "waveform.circle.fill")
-                .font(.system(size: 64))
-                .foregroundStyle(.accentColor)
-
-            Text("VoiceFlow for Mac")
-                .font(.title2.bold())
-
-            Text("Dictate anywhere. Claude cleans it up.")
-                .font(.subheadline)
-                .foregroundStyle(.secondary)
+                VStack(alignment: .leading, spacing: 2) {
+                    Text("VoiceFlow for Mac")
+                        .font(.title3.bold())
+                    Text("Dictate anywhere. Claude cleans it up.")
+                        .font(.subheadline)
+                        .foregroundStyle(.secondary)
+                    HStack(spacing: 12) {
+                        Text("Version 1.0.0")
+                        Text("Build \(Bundle.main.object(forInfoDictionaryKey: "CFBundleVersion") as? String ?? "1")")
+                    }
+                    .font(.caption)
+                    .foregroundStyle(.tertiary)
+                }
+                Spacer()
+            }
+            .padding(.horizontal)
+            .padding(.top, 12)
 
             Divider()
-                .frame(width: 200)
 
-            VStack(spacing: 6) {
-                infoRow("Version", value: "1.0.0")
-                infoRow("Build", value: Bundle.main.object(forInfoDictionaryKey: "CFBundleVersion") as? String ?? "1")
-                infoRow("API Key", value: Secrets.anthropicAPIKey == "sk-ant-REPLACE-ME" ? "Not configured" : "Configured")
-                infoRow("Model", value: "Claude Haiku 4.5")
+            // API Key configuration — this is the critical setup step
+            Form {
+                Section {
+                    VStack(alignment: .leading, spacing: 8) {
+                        HStack(spacing: 6) {
+                            Image(systemName: isKeyConfigured ? "checkmark.shield.fill" : "exclamationmark.shield.fill")
+                                .foregroundStyle(isKeyConfigured ? .green : .orange)
+                            Text(isKeyConfigured ? "API key configured" : "API key required")
+                                .font(.system(size: 13, weight: .medium))
+                        }
+
+                        Text("VoiceFlow uses the Anthropic API (Claude Haiku) to clean up your dictation. Enter your API key below. It's stored securely in your Mac's Keychain — never in plain text.")
+                            .font(.system(size: 11))
+                            .foregroundStyle(.secondary)
+
+                        HStack {
+                            SecureField("sk-ant-api03-...", text: $apiKeyInput)
+                                .textFieldStyle(.roundedBorder)
+                                .font(.system(size: 12, design: .monospaced))
+
+                            Button(isKeyConfigured ? "Update" : "Save") {
+                                let trimmed = apiKeyInput.trimmingCharacters(in: .whitespacesAndNewlines)
+                                Secrets.saveAPIKey(trimmed)
+                                isKeyConfigured = Secrets.isAPIKeyConfigured
+                                apiKeyInput = ""
+                                showingSaveConfirmation = true
+                            }
+                            .disabled(apiKeyInput.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty)
+                            .controlSize(.small)
+                        }
+
+                        if showingSaveConfirmation {
+                            Text("Key saved to Keychain.")
+                                .font(.system(size: 10))
+                                .foregroundStyle(.green)
+                                .task {
+                                    try? await Task.sleep(nanoseconds: 3_000_000_000)
+                                    showingSaveConfirmation = false
+                                }
+                        }
+                    }
+                } header: {
+                    Text("Anthropic API Key")
+                }
+
+                Section {
+                    VStack(alignment: .leading, spacing: 4) {
+                        infoRow("Model", value: "Claude Haiku 4.5")
+                        infoRow("Keychain", value: "com.hak-tx.voiceflow.mac")
+                        infoRow("Speech", value: "On-device (Apple)")
+                    }
+                } header: {
+                    Text("Technical Details")
+                } footer: {
+                    Text("All speech recognition runs locally on your Mac. Only the transcript text is sent to the Claude API for cleanup — no audio ever leaves your device.")
+                        .font(.caption)
+                        .foregroundStyle(.tertiary)
+                }
             }
-
-            Spacer()
-
-            Text("VoiceFlow uses the Anthropic API for text cleanup.\nAll speech recognition runs locally on your Mac.")
-                .font(.caption)
-                .foregroundStyle(.tertiary)
-                .multilineTextAlignment(.center)
-                .padding(.bottom, 8)
+            .formStyle(.grouped)
         }
-        .frame(maxWidth: .infinity, maxHeight: .infinity)
-        .padding()
     }
 
     private func infoRow(_ label: String, value: String) -> some View {

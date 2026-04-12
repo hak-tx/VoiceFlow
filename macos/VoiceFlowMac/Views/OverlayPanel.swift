@@ -79,9 +79,18 @@ final class OverlayPanelController: ObservableObject {
     }
 
     /// Position the panel below-right of the given rect, staying
-    /// on screen.
+    /// on the screen that contains the cursor. Handles multi-monitor.
     private func positionPanel(near rect: CGRect, size: CGSize) -> NSRect {
-        guard let screen = NSScreen.main else {
+        // Find the screen that contains the cursor rect. This is
+        // critical for multi-monitor setups — NSScreen.main is always
+        // the screen with the key window, which might not be where
+        // the user's cursor is.
+        let cursorPoint = CGPoint(x: rect.midX, y: rect.midY)
+        let screen = NSScreen.screens.first(where: { $0.frame.contains(cursorPoint) })
+            ?? NSScreen.main
+            ?? NSScreen.screens.first
+
+        guard let screen else {
             return NSRect(origin: .zero, size: size)
         }
 
@@ -104,6 +113,11 @@ final class OverlayPanelController: ObservableObject {
         }
         if origin.x < screenFrame.minX {
             origin.x = screenFrame.minX + 8
+        }
+
+        // Keep on screen vertically.
+        if origin.y + size.height > screenFrame.maxY {
+            origin.y = screenFrame.maxY - size.height
         }
 
         return NSRect(origin: origin, size: size)

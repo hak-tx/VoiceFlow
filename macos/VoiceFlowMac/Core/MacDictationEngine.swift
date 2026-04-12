@@ -17,6 +17,9 @@ import Speech
 import AVFoundation
 import Combine
 import AppKit
+import os.log
+
+private let log = Logger(subsystem: "com.hak-tx.voiceflow.mac", category: "DictationEngine")
 
 @MainActor
 final class MacDictationEngine: ObservableObject {
@@ -112,22 +115,26 @@ final class MacDictationEngine: ObservableObject {
 
     /// Ask for microphone + speech recognition permissions on macOS.
     func requestPermissions() async -> Bool {
+        log.info("Requesting speech + microphone permissions")
+
         let speechOK: Bool = await withCheckedContinuation { cont in
             SFSpeechRecognizer.requestAuthorization { status in
                 cont.resume(returning: status == .authorized)
             }
         }
 
-        // macOS microphone permission
         let micOK: Bool
         if #available(macOS 14.0, *) {
             micOK = await AVAudioApplication.requestRecordPermission()
         } else {
-            micOK = true // Pre-Sonoma: permission is granted at first use
+            micOK = true
         }
 
         if !speechOK || !micOK {
+            log.warning("Permission denied — speech=\(speechOK), mic=\(micOK)")
             errorMessage = "Microphone or speech recognition permission denied. Check System Settings → Privacy & Security."
+        } else {
+            log.info("All permissions granted")
         }
         return speechOK && micOK
     }
@@ -397,10 +404,21 @@ final class MacDictationEngine: ObservableObject {
 
     func polish() async {
         let raw = liveTranscript.trimmingCharacters(in: .whitespacesAndNewlines)
-        guard !raw.isEmpty else { return }
+        guard !raw.isEmpty else {
+            log.info("polish() called with empty transcript — skipping")
+            return
+        }
 
+        log.info("Starting polish — \(raw.count) chars, tone=\(self.tonePreset.title)")
         isPolishing = true
         defer { isPolishing = false }
+
+        // Check API key before making the request.
+        guard Secrets.isAPIKeyConfigured else {
+            errorMessage = "API key not configured. Open Settings → About to enter your Anthropic API key."
+            log.error("Polish aborted — no API key configured")
+            return
+        }
 
         let model: ClaudeCleanup.Model = .haiku
 
@@ -423,8 +441,19 @@ final class MacDictationEngine: ObservableObject {
 
         do {
             let cleaned = try await ClaudeCleanup.shared.clean(request)
+            log.info("Polish succeeded — \(cleaned.count) chars out")
 
             if let base = replaceBase, let range = replaceRange {
+                // Validate the range before replacing.
+                let ns = base as NSString
+                guard range.location + range.length <= ns.length else {
+                    log.error("Invalid splice range \(range.location)+\(range.length) in string of length \(ns.length)")
+                    errorMessage = "Text replacement failed — the original text may have changed."
+                    replaceBase = nil
+                    replaceRange = nil
+                    isReplacingSelection = false
+                    return
+                }
                 let mutable = NSMutableString(string: base)
                 mutable.replaceCharacters(in: range, with: cleaned)
                 let spliced = mutable as String
@@ -441,12 +470,18 @@ final class MacDictationEngine: ObservableObject {
                 onPolishComplete?(cleaned)
             }
         } catch {
-            errorMessage = "Polish failed: \(error.localizedDescription)"
+            log.error("Polish failed: \(error.localizedDescription)")
+            errorMessage = "Cleanup failed: \(error.localizedDescription)"
+
+            // Keep the raw transcript visible so the user doesn't lose
+            // their work. They can copy it manually or retry.
             if let base = replaceBase {
                 polishedTranscript = base
                 liveTranscript = base
                 cachedPolishedTranscript = base
             }
+            // Note: liveTranscript is preserved (not cleared) so the
+            // user still has their raw dictation even on error.
             replaceBase = nil
             replaceRange = nil
             isReplacingSelection = false
