@@ -121,15 +121,10 @@ final class MacDictationEngine: ObservableObject {
                 cont.resume(returning: status == .authorized)
             }
         }
-        let micOK: Bool = await withCheckedContinuation { cont in
-            AVCaptureDevice.requestAccess(for: .audio) { granted in
-                cont.resume(returning: granted)
-            }
+        if !speechOK {
+            errorMessage = "Speech recognition permission denied."
         }
-        if !speechOK || !micOK {
-            errorMessage = "Microphone or speech recognition permission denied."
-        }
-        return speechOK && micOK
+        return speechOK
     }
 
     // MARK: - Public API
