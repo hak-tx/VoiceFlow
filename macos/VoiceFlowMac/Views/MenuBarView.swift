@@ -116,24 +116,25 @@ struct MenuBarView: View {
                         Text("Anthropic API Key")
                             .font(.system(size: 12, weight: .semibold))
                     }
-                    Text("Paste your API key below. Get one at console.anthropic.com")
+                    Text("Copy your API key, then click the button below.")
                         .font(.system(size: 10))
                         .foregroundStyle(.secondary)
-                    HStack(spacing: 6) {
-                        TextField("sk-ant-api03-...", text: $apiKeyInput)
-                            .textFieldStyle(.roundedBorder)
-                            .font(.system(size: 11, design: .monospaced))
-                        Button("Save") {
-                            let trimmed = apiKeyInput.trimmingCharacters(in: .whitespacesAndNewlines)
-                            guard !trimmed.isEmpty else { return }
-                            Secrets.saveAPIKey(trimmed)
-                            apiKeyInput = ""
+                    Button {
+                        if let clipboardText = NSPasteboard.general.string(forType: .string)?
+                            .trimmingCharacters(in: .whitespacesAndNewlines),
+                           !clipboardText.isEmpty {
+                            Secrets.saveAPIKey(clipboardText)
                             apiKeyConfigured = true
                         }
-                        .buttonStyle(.borderedProminent)
-                        .controlSize(.small)
-                        .disabled(apiKeyInput.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty)
+                    } label: {
+                        HStack {
+                            Image(systemName: "doc.on.clipboard")
+                            Text("Paste API Key from Clipboard")
+                        }
+                        .frame(maxWidth: .infinity)
                     }
+                    .buttonStyle(.borderedProminent)
+                    .controlSize(.regular)
                 }
             }
 
