@@ -97,7 +97,11 @@ final class MacDictationEngine: ObservableObject {
             object: nil,
             queue: .main
         ) { [weak self] _ in
-            self?.forceReleaseMic()
+            guard let self else { return }
+            self.audioEngine.inputNode.removeTap(onBus: 0)
+            self.audioEngine.stop()
+            self.recognitionRequest?.endAudio()
+            self.recognitionTask?.cancel()
         }
     }
 
@@ -105,15 +109,8 @@ final class MacDictationEngine: ObservableObject {
         if let obs = terminateObserver {
             NotificationCenter.default.removeObserver(obs)
         }
-        forceReleaseMic()
-    }
-
-    /// Unconditionally release mic resources. Called on quit and deinit.
-    private nonisolated func forceReleaseMic() {
         audioEngine.inputNode.removeTap(onBus: 0)
         audioEngine.stop()
-        recognitionRequest?.endAudio()
-        recognitionTask?.cancel()
     }
 
     // MARK: - Permissions
