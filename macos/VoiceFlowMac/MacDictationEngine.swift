@@ -53,6 +53,17 @@ final class MacDictationEngine: ObservableObject {
     /// When true, polished text is auto-copied to clipboard.
     @Published var autoClipboard: Bool = true
 
+    // MARK: - Live typing state
+
+    /// How many characters we've typed into the active app so far.
+    /// Used to delete-and-retype when the recognizer revises words,
+    /// and to select-all-and-replace after cleanup.
+    private var typedCharCount: Int = 0
+
+    /// The last transcript we typed into the active app. Compared
+    /// against new partials to compute the diff.
+    private var lastTypedText: String = ""
+
     // MARK: - Silence detection
 
     /// How long to wait after the last non-silent buffer before
@@ -125,6 +136,9 @@ final class MacDictationEngine: ObservableObject {
         polishedTranscript = ""
         finalizedText = ""
         lastNonSilentTime = Date()
+        typedCharCount = 0
+        lastTypedText = ""
+        NSSound(named: "Tink")?.play() // start tone
 
         do {
             try startAudioEngineAndRecognition()
@@ -140,10 +154,10 @@ final class MacDictationEngine: ObservableObject {
     func stop() {
         guard isRecording else { return }
         isRecording = false
+        NSSound(named: "Pop")?.play() // stop tone
         stopSilenceTimer()
         stopAudioEngine()
 
-        // Trigger cleanup
         let rawTranscript = buildFinalTranscript()
         if !rawTranscript.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
             Task {
@@ -215,10 +229,13 @@ final class MacDictationEngine: ObservableObject {
 
                 if let result {
                     let partial = result.bestTranscription.formattedString
-                    print("[VF] Got transcript: \(partial.prefix(50))")
-                    self.liveTranscript = self.finalizedText.isEmpty
+                    let combined = self.finalizedText.isEmpty
                         ? partial
                         : self.finalizedText + " " + partial
+                    self.liveTranscript = combined
+
+                    // Type live text at the cursor in the active app.
+                    self.typeIncrementalUpdate(combined)
                 }
 
                 if let error {
@@ -353,24 +370,76 @@ final class MacDictationEngine: ObservableObject {
             let cleaned = try await ClaudeCleanup.shared.clean(request)
             polishedTranscript = cleaned
 
-            if autoClipboard {
-                copyToClipboard(cleaned)
-            }
+            // Delete the raw text we typed, replace with cleaned.
+            replaceTypedText(with: cleaned)
+
+            // Also copy to clipboard for easy paste elsewhere.
+            let pb = NSPasteboard.general
+            pb.clearContents()
+            pb.setString(cleaned, forType: .string)
         } catch {
             errorMessage = "Cleanup failed: \(error.localizedDescription)"
-            // Fall back to raw transcript on clipboard
             polishedTranscript = rawTranscript
-            if autoClipboard {
-                copyToClipboard(rawTranscript)
+        }
+    }
+
+    // MARK: - Live typing at cursor via CGEvent
+
+    /// Type incremental updates into the active app. Compares the
+    /// new transcript against what we already typed. If the new text
+    /// is an extension, types only the new characters. If the
+    /// recognizer revised earlier words, deletes everything and
+    /// retypes the full text.
+    private func typeIncrementalUpdate(_ current: String) {
+        if current.hasPrefix(lastTypedText) {
+            // Append only new characters.
+            let newPart = String(current.dropFirst(lastTypedText.count))
+            if !newPart.isEmpty {
+                cgType(newPart)
+                typedCharCount += newPart.count
+            }
+        } else {
+            // Recognizer revised earlier words — delete and retype.
+            cgDeleteBackward(typedCharCount)
+            cgType(current)
+            typedCharCount = current.count
+        }
+        lastTypedText = current
+    }
+
+    /// After cleanup, delete the raw text and type the cleaned text.
+    private func replaceTypedText(with cleaned: String) {
+        cgDeleteBackward(typedCharCount)
+        cgType(cleaned)
+        typedCharCount = 0
+        lastTypedText = ""
+    }
+
+    /// Simulate typing a string into the frontmost app via CGEvent.
+    private func cgType(_ text: String) {
+        let src = CGEventSource(stateID: .hidSystemState)
+        for char in text {
+            let utf16 = Array(String(char).utf16)
+            if let down = CGEvent(keyboardEventSource: src, virtualKey: 0, keyDown: true) {
+                down.keyboardSetUnicodeString(stringLength: utf16.count, unicodeString: utf16)
+                down.post(tap: .cghidEventTap)
+            }
+            if let up = CGEvent(keyboardEventSource: src, virtualKey: 0, keyDown: false) {
+                up.post(tap: .cghidEventTap)
             }
         }
     }
 
-    // MARK: - Clipboard
-
-    private func copyToClipboard(_ text: String) {
-        let pasteboard = NSPasteboard.general
-        pasteboard.clearContents()
-        pasteboard.setString(text, forType: .string)
+    /// Simulate pressing Delete/Backspace N times.
+    private func cgDeleteBackward(_ count: Int) {
+        let src = CGEventSource(stateID: .hidSystemState)
+        for _ in 0..<count {
+            if let down = CGEvent(keyboardEventSource: src, virtualKey: 51, keyDown: true) {
+                down.post(tap: .cghidEventTap)
+            }
+            if let up = CGEvent(keyboardEventSource: src, virtualKey: 51, keyDown: false) {
+                up.post(tap: .cghidEventTap)
+            }
+        }
     }
 }
