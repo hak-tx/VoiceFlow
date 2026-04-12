@@ -93,6 +93,7 @@ final class MacDictationEngine: ObservableObject {
     private func requestPermissions() {
         SFSpeechRecognizer.requestAuthorization { [weak self] status in
             Task { @MainActor in
+                print("[VF] Speech auth status: \(status.rawValue) (0=notDetermined, 1=denied, 2=restricted, 3=authorized)")
                 switch status {
                 case .authorized:
                     break
@@ -110,11 +111,14 @@ final class MacDictationEngine: ObservableObject {
     // MARK: - Start / Stop
 
     func start() {
+        print("[VF] start() called, isRecording=\(isRecording)")
         guard !isRecording else { return }
         guard let speechRecognizer, speechRecognizer.isAvailable else {
             errorMessage = "Speech recognizer is not available on this system."
+            print("[VF] FAIL: recognizer nil or unavailable")
             return
         }
+        print("[VF] Recognizer OK, starting audio...")
 
         errorMessage = nil
         liveTranscript = ""
@@ -125,9 +129,11 @@ final class MacDictationEngine: ObservableObject {
         do {
             try startAudioEngineAndRecognition()
             isRecording = true
+            print("[VF] Recording STARTED - speak now")
             startSilenceTimer()
         } catch {
             errorMessage = "Failed to start audio: \(error.localizedDescription)"
+            print("[VF] FAIL: \(error)")
         }
     }
 
@@ -209,6 +215,7 @@ final class MacDictationEngine: ObservableObject {
 
                 if let result {
                     let partial = result.bestTranscription.formattedString
+                    print("[VF] Got transcript: \(partial.prefix(50))")
                     self.liveTranscript = self.finalizedText.isEmpty
                         ? partial
                         : self.finalizedText + " " + partial
