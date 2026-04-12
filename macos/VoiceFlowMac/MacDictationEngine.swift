@@ -390,15 +390,9 @@ final class MacDictationEngine: ObservableObject {
     /// Insert text at the cursor in the frontmost app.
     /// Uses CGEvent keyboard simulation — requires Accessibility
     /// permission on a stable (non-Xcode-debug) binary.
-    private func pasteTextAtCursor(_ text: String) {
+    /// Type a string at the cursor via CGEvent keyboard simulation.
+    private func cgType(_ text: String) {
         guard !text.isEmpty else { return }
-
-        // Also copy to clipboard as backup.
-        let pb = NSPasteboard.general
-        pb.clearContents()
-        pb.setString(text, forType: .string)
-
-        // Type via CGEvent.
         let src = CGEventSource(stateID: .hidSystemState)
         for char in text {
             let utf16 = Array(String(char).utf16)
@@ -410,6 +404,14 @@ final class MacDictationEngine: ObservableObject {
                 up.post(tap: .cghidEventTap)
             }
         }
+    }
+
+    /// Paste text at cursor — copies to clipboard + types via CGEvent.
+    private func pasteTextAtCursor(_ text: String) {
+        let pb = NSPasteboard.general
+        pb.clearContents()
+        pb.setString(text, forType: .string)
+        cgType(text)
     }
 
     /// Type incremental updates into the active app LIVE as the
