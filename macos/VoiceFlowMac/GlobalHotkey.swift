@@ -33,7 +33,8 @@ final class GlobalHotkey: ObservableObject {
     }
 
     deinit {
-        unregister()
+        if let g = globalMonitor { NSEvent.removeMonitor(g) }
+        if let l = localMonitor { NSEvent.removeMonitor(l) }
     }
 
     // MARK: - Accessibility
