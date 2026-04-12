@@ -73,7 +73,7 @@ struct MacVocabPackPickerView: View {
                             Image(systemName: "pencil.and.list.clipboard")
                                 .font(.system(size: 14))
                                 .frame(width: 24)
-                                .foregroundStyle(.accentColor)
+                                .foregroundStyle(Color.accentColor)
                             VStack(alignment: .leading, spacing: 1) {
                                 Text("Custom Vocabulary")
                                     .font(.system(size: 12, weight: .medium))
@@ -162,7 +162,7 @@ struct MacVocabPackPickerView: View {
     private func catalogRow(_ entry: VocabPackCatalogEntry) -> some View {
         HStack(spacing: 8) {
             Image(systemName: "arrow.down.circle")
-                .foregroundStyle(.accentColor)
+                .foregroundStyle(Color.accentColor)
                 .font(.system(size: 14))
 
             VStack(alignment: .leading, spacing: 1) {

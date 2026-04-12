@@ -242,7 +242,7 @@ struct MenuBarView: View {
             } label: {
                 Image(systemName: engine.isRecording ? "stop.circle.fill" : "mic.circle.fill")
                     .font(.system(size: 24))
-                    .foregroundStyle(engine.isRecording ? .red : .accentColor)
+                    .foregroundStyle(engine.isRecording ? Color.red : Color.accentColor)
             }
             .buttonStyle(.plain)
             .help(engine.isRecording ? "Stop dictation" : "Start dictation")

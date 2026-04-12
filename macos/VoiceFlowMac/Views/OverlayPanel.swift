@@ -259,6 +259,6 @@ struct WaveformBar: View {
         } else if intensity > 0.4 {
             return .orange.opacity(0.7)
         }
-        return .accentColor.opacity(0.6)
+        return Color.accentColor.opacity(0.6)
     }
 }
