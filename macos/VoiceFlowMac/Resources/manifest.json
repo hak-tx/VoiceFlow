@@ -1,0 +1,105 @@
+{
+  "schemaVersion": "2.0",
+  "updated": "2026-04-11",
+  "packs": [
+    {
+      "id": "software-dev",
+      "name": "Software Development",
+      "file": "software-dev.json",
+      "version": "2.0.0",
+      "description": "Software engineering terminology for developers, SREs, data/ML, and technical leads.",
+      "termCount": 210,
+      "category": "free"
+    },
+    {
+      "id": "general-business",
+      "name": "General Business",
+      "file": "general-business.json",
+      "version": "2.0.0",
+      "description": "Everyday corporate vocabulary — meetings, memos, emails, planning, and people ops.",
+      "termCount": 180,
+      "category": "free"
+    },
+    {
+      "id": "medical-general",
+      "name": "Medical (General)",
+      "file": "medical-general.json",
+      "version": "1.0.0",
+      "description": "General medical vocabulary for physicians, PAs, NPs, and clinicians dictating informal notes.",
+      "termCount": 170,
+      "category": "free"
+    },
+    {
+      "id": "corporate-law",
+      "name": "Corporate Law",
+      "file": "corporate-law.json",
+      "version": "1.0.0",
+      "description": "Transactional and corporate attorney vocabulary covering M&A, financings, governance, contracts.",
+      "termCount": 180,
+      "category": "pro"
+    },
+    {
+      "id": "real-estate",
+      "name": "Real Estate",
+      "file": "real-estate.json",
+      "version": "1.0.0",
+      "description": "Residential and commercial real estate vocabulary for agents, brokers, property managers.",
+      "termCount": 190,
+      "category": "pro"
+    },
+    {
+      "id": "construction",
+      "name": "Construction",
+      "file": "construction.json",
+      "version": "1.0.0",
+      "description": "General construction and trades vocabulary covering site work, framing, MEP, finishes.",
+      "termCount": 200,
+      "category": "pro"
+    },
+    {
+      "id": "finance-banking",
+      "name": "Finance & Banking",
+      "file": "finance-banking.json",
+      "version": "1.0.0",
+      "description": "Corporate finance, investment banking, capital markets, and commercial banking vocabulary.",
+      "termCount": 200,
+      "category": "pro"
+    },
+    {
+      "id": "marketing-advertising",
+      "name": "Marketing & Advertising",
+      "file": "marketing-advertising.json",
+      "version": "1.0.0",
+      "description": "Brand, performance, and growth marketing vocabulary covering paid media, content, SEO, analytics.",
+      "termCount": 200,
+      "category": "pro"
+    },
+    {
+      "id": "management-consulting",
+      "name": "Management Consulting",
+      "file": "management-consulting.json",
+      "version": "1.0.0",
+      "description": "Strategy and operations consulting vocabulary. Covers case structures, frameworks, deliverables.",
+      "termCount": 180,
+      "category": "pro"
+    },
+    {
+      "id": "healthcare-nursing",
+      "name": "Healthcare & Nursing",
+      "file": "healthcare-nursing.json",
+      "version": "1.0.0",
+      "description": "Nursing, allied health, and clinical staff vocabulary. Complements Medical (General).",
+      "termCount": 180,
+      "category": "pro"
+    },
+    {
+      "id": "accounting-tax",
+      "name": "Accounting & Tax",
+      "file": "accounting-tax.json",
+      "version": "1.0.0",
+      "description": "Accounting, audit, and tax vocabulary for CPAs, controllers, and finance teams.",
+      "termCount": 210,
+      "category": "pro"
+    }
+  ]
+}

@@ -32,6 +32,7 @@ final class MacVocabPackManager: ObservableObject {
     // MARK: - Keys
 
     private let activeKey = "VoiceFlowMac.activeVocabPacks"
+    private let hasAutoActivatedKey = "VoiceFlowMac.hasAutoActivatedPacks"
     private let customTermsKey = "VoiceFlowMac.customVocab.terms"
     private let customPhrasesKey = "VoiceFlowMac.customVocab.phrases"
     private let customHintsKey = "VoiceFlowMac.customVocab.hints"
@@ -79,6 +80,14 @@ final class MacVocabPackManager: ObservableObject {
                 return lhs.category.sortOrder < rhs.category.sortOrder
             }
             return lhs.name < rhs.name
+        }
+
+        // Auto-activate ALL packs on first launch so every industry
+        // gets correct terminology out of the box.
+        if !UserDefaults.standard.bool(forKey: hasAutoActivatedKey) && !loaded.isEmpty {
+            activePackNames = Set(loaded.map { $0.name })
+            UserDefaults.standard.set(Array(activePackNames), forKey: activeKey)
+            UserDefaults.standard.set(true, forKey: hasAutoActivatedKey)
         }
     }
 

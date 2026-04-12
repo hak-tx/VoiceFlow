@@ -23,6 +23,18 @@
 		A10004005 /* MacSettingsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = A10004004 /* MacSettingsView.swift */; };
 		A10004007 /* MacVocabPackPickerView.swift in Sources */ = {isa = PBXBuildFile; fileRef = A10004006 /* MacVocabPackPickerView.swift */; };
 		A10005001 /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = A10005000 /* Assets.xcassets */; };
+		B10001001 /* software-dev.json in Resources */ = {isa = PBXBuildFile; fileRef = B10001000 /* software-dev.json */; };
+		B10001003 /* general-business.json in Resources */ = {isa = PBXBuildFile; fileRef = B10001002 /* general-business.json */; };
+		B10001005 /* medical-general.json in Resources */ = {isa = PBXBuildFile; fileRef = B10001004 /* medical-general.json */; };
+		B10001007 /* corporate-law.json in Resources */ = {isa = PBXBuildFile; fileRef = B10001006 /* corporate-law.json */; };
+		B10001009 /* real-estate.json in Resources */ = {isa = PBXBuildFile; fileRef = B10001008 /* real-estate.json */; };
+		B1000100B /* construction.json in Resources */ = {isa = PBXBuildFile; fileRef = B1000100A /* construction.json */; };
+		B1000100D /* finance-banking.json in Resources */ = {isa = PBXBuildFile; fileRef = B1000100C /* finance-banking.json */; };
+		B1000100F /* marketing-advertising.json in Resources */ = {isa = PBXBuildFile; fileRef = B1000100E /* marketing-advertising.json */; };
+		B10001011 /* management-consulting.json in Resources */ = {isa = PBXBuildFile; fileRef = B10001010 /* management-consulting.json */; };
+		B10001013 /* healthcare-nursing.json in Resources */ = {isa = PBXBuildFile; fileRef = B10001012 /* healthcare-nursing.json */; };
+		B10001015 /* accounting-tax.json in Resources */ = {isa = PBXBuildFile; fileRef = B10001014 /* accounting-tax.json */; };
+		B10001017 /* manifest.json in Resources */ = {isa = PBXBuildFile; fileRef = B10001016 /* manifest.json */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXFileReference section */
@@ -45,6 +57,18 @@
 		A10005000 /* Assets.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = Assets.xcassets; sourceTree = "<group>"; };
 		A10006000 /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist.xml; path = Info.plist; sourceTree = "<group>"; };
 		A10006002 /* VoiceFlowMac.entitlements */ = {isa = PBXFileReference; lastKnownFileType = text.plist.entitlements; path = VoiceFlowMac.entitlements; sourceTree = "<group>"; };
+		B10001000 /* software-dev.json */ = {isa = PBXFileReference; lastKnownFileType = text.json; path = "software-dev.json"; sourceTree = "<group>"; };
+		B10001002 /* general-business.json */ = {isa = PBXFileReference; lastKnownFileType = text.json; path = "general-business.json"; sourceTree = "<group>"; };
+		B10001004 /* medical-general.json */ = {isa = PBXFileReference; lastKnownFileType = text.json; path = "medical-general.json"; sourceTree = "<group>"; };
+		B10001006 /* corporate-law.json */ = {isa = PBXFileReference; lastKnownFileType = text.json; path = "corporate-law.json"; sourceTree = "<group>"; };
+		B10001008 /* real-estate.json */ = {isa = PBXFileReference; lastKnownFileType = text.json; path = "real-estate.json"; sourceTree = "<group>"; };
+		B1000100A /* construction.json */ = {isa = PBXFileReference; lastKnownFileType = text.json; path = "construction.json"; sourceTree = "<group>"; };
+		B1000100C /* finance-banking.json */ = {isa = PBXFileReference; lastKnownFileType = text.json; path = "finance-banking.json"; sourceTree = "<group>"; };
+		B1000100E /* marketing-advertising.json */ = {isa = PBXFileReference; lastKnownFileType = text.json; path = "marketing-advertising.json"; sourceTree = "<group>"; };
+		B10001010 /* management-consulting.json */ = {isa = PBXFileReference; lastKnownFileType = text.json; path = "management-consulting.json"; sourceTree = "<group>"; };
+		B10001012 /* healthcare-nursing.json */ = {isa = PBXFileReference; lastKnownFileType = text.json; path = "healthcare-nursing.json"; sourceTree = "<group>"; };
+		B10001014 /* accounting-tax.json */ = {isa = PBXFileReference; lastKnownFileType = text.json; path = "accounting-tax.json"; sourceTree = "<group>"; };
+		B10001016 /* manifest.json */ = {isa = PBXFileReference; lastKnownFileType = text.json; path = "manifest.json"; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -74,6 +98,7 @@
 				A10000070 /* Core */,
 				A10000080 /* Views */,
 				A10005000 /* Assets.xcassets */,
+				B10000090 /* Resources */,
 				A10006000 /* Info.plist */,
 				A10006002 /* VoiceFlowMac.entitlements */,
 			);
@@ -129,6 +154,25 @@
 				A10004006 /* MacVocabPackPickerView.swift */,
 			);
 			path = Views;
+			sourceTree = "<group>";
+		};
+		B10000090 /* Resources */ = {
+			isa = PBXGroup;
+			children = (
+				B10001000 /* software-dev.json */,
+				B10001002 /* general-business.json */,
+				B10001004 /* medical-general.json */,
+				B10001006 /* corporate-law.json */,
+				B10001008 /* real-estate.json */,
+				B1000100A /* construction.json */,
+				B1000100C /* finance-banking.json */,
+				B1000100E /* marketing-advertising.json */,
+				B10001010 /* management-consulting.json */,
+				B10001012 /* healthcare-nursing.json */,
+				B10001014 /* accounting-tax.json */,
+				B10001016 /* manifest.json */,
+			);
+			path = Resources;
 			sourceTree = "<group>";
 		};
 /* End PBXGroup section */
@@ -190,6 +234,18 @@
 			buildActionMask = 2147483647;
 			files = (
 				A10005001 /* Assets.xcassets in Resources */,
+				B10001001 /* software-dev.json in Resources */,
+				B10001003 /* general-business.json in Resources */,
+				B10001005 /* medical-general.json in Resources */,
+				B10001007 /* corporate-law.json in Resources */,
+				B10001009 /* real-estate.json in Resources */,
+				B1000100B /* construction.json in Resources */,
+				B1000100D /* finance-banking.json in Resources */,
+				B1000100F /* marketing-advertising.json in Resources */,
+				B10001011 /* management-consulting.json in Resources */,
+				B10001013 /* healthcare-nursing.json in Resources */,
+				B10001015 /* accounting-tax.json in Resources */,
+				B10001017 /* manifest.json in Resources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};

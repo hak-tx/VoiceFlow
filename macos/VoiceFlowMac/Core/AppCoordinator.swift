@@ -184,7 +184,7 @@ final class AppCoordinator: ObservableObject {
             .receive(on: DispatchQueue.main)
             .sink { [weak self] newTranscript in
                 guard let self, self.engine.isRecording else { return }
-                self.pushDeltaToCursor(newTranscript)
+                self.pushToCursor(newTranscript)
             }
     }
 
@@ -193,27 +193,24 @@ final class AppCoordinator: ObservableObject {
         transcriptObserver = nil
     }
 
-    /// Calculate what's new in the transcript since our last push,
-    /// and type only the new characters at the cursor.
-    private func pushDeltaToCursor(_ fullTranscript: String) {
-        let newLength = fullTranscript.count
-
-        if newLength > insertedCharCount {
-            // New characters to type.
-            let startIndex = fullTranscript.index(fullTranscript.startIndex, offsetBy: insertedCharCount)
-            let delta = String(fullTranscript[startIndex...])
-            accessibilityManager.insertText(delta)
-            insertedCharCount = newLength
-        } else if newLength < insertedCharCount {
-            // Transcript got shorter (speech recognizer revised).
-            // Select and replace the previously inserted text.
+    /// Push the full transcript to the cursor position, replacing
+    /// whatever we previously inserted. We do NOT use deltas because
+    /// the speech recognizer revises earlier words as it gets more
+    /// context (e.g., "Testing test" → "Testing testing"). Delta
+    /// appending would duplicate text in that case.
+    private func pushToCursor(_ fullTranscript: String) {
+        if insertedCharCount > 0 {
+            // Replace everything we've typed so far with the updated transcript.
             let replaceRange = CFRange(
                 location: insertionStart,
                 length: insertedCharCount
             )
             accessibilityManager.replaceRange(replaceRange, with: fullTranscript)
-            insertedCharCount = newLength
+        } else if !fullTranscript.isEmpty {
+            // First insert.
+            accessibilityManager.insertText(fullTranscript)
         }
+        insertedCharCount = fullTranscript.count
     }
 
     // MARK: - Polish complete handler
