@@ -385,58 +385,61 @@ final class MacDictationEngine: ObservableObject {
 
     // MARK: - Live typing at cursor via CGEvent
 
-    /// Type incremental updates into the active app.
-    private func typeIncrementalUpdate(_ current: String) {
-        print("[VF] typeIncremental: '\(current.prefix(30))' (typed=\(typedCharCount))")
-        if current.hasPrefix(lastTypedText) {
-            let newPart = String(current.dropFirst(lastTypedText.count))
-            if !newPart.isEmpty {
-                print("[VF] Appending: '\(newPart.prefix(20))'")
-                cgType(newPart)
-                typedCharCount += newPart.count
-            }
-        } else {
-            print("[VF] Revision detected, retyping all")
-            cgDeleteBackward(typedCharCount)
-            cgType(current)
-            typedCharCount = current.count
+    /// Type text at the cursor in the frontmost app using clipboard
+    /// + Cmd+V. This is the most reliable cross-app text insertion
+    /// on macOS — works everywhere CGEvent posting fails.
+    private func pasteTextAtCursor(_ text: String) {
+        guard !text.isEmpty else { return }
+
+        // Save current clipboard so we can restore it.
+        let pb = NSPasteboard.general
+        let savedItems = pb.pasteboardItems?.compactMap { item -> (String, String)? in
+            guard let type = item.types.first,
+                  let data = item.string(forType: type) else { return nil }
+            return (type.rawValue, data)
+        } ?? []
+
+        // Put our text on the clipboard.
+        pb.clearContents()
+        pb.setString(text, forType: .string)
+
+        // Simulate Cmd+V via AppleScript (reliable across all apps).
+        let script = NSAppleScript(source: """
+            tell application "System Events"
+                keystroke "v" using command down
+            end tell
+        """)
+        var error: NSDictionary?
+        script?.executeAndReturnError(&error)
+        if let error {
+            print("[VF] Paste error: \(error)")
         }
+
+        // Restore clipboard after a short delay.
+        DispatchQueue.main.asyncAfter(deadline: .now() + 0.3) {
+            if !savedItems.isEmpty {
+                pb.clearContents()
+                for (typeRaw, data) in savedItems {
+                    pb.setString(data, forType: NSPasteboard.PasteboardType(typeRaw))
+                }
+            }
+        }
+    }
+
+    /// Type incremental updates. For live typing, we accumulate
+    /// and only paste the final cleaned result (live partial results
+    /// are too noisy for paste-based insertion). The user hears the
+    /// start/stop tones and sees the cleanup appear after stop.
+    private func typeIncrementalUpdate(_ current: String) {
+        // Live text just updates the internal state.
+        // Actual insertion happens after cleanup via replaceTypedText.
         lastTypedText = current
     }
 
-    /// After cleanup, delete the raw text and type the cleaned text.
+    /// After cleanup, paste the cleaned text at the cursor.
     private func replaceTypedText(with cleaned: String) {
-        cgDeleteBackward(typedCharCount)
-        cgType(cleaned)
+        pasteTextAtCursor(cleaned)
         typedCharCount = 0
         lastTypedText = ""
-    }
-
-    /// Simulate typing a string into the frontmost app via CGEvent.
-    private func cgType(_ text: String) {
-        let src = CGEventSource(stateID: .hidSystemState)
-        for char in text {
-            let utf16 = Array(String(char).utf16)
-            if let down = CGEvent(keyboardEventSource: src, virtualKey: 0, keyDown: true) {
-                down.keyboardSetUnicodeString(stringLength: utf16.count, unicodeString: utf16)
-                down.post(tap: .cghidEventTap)
-            }
-            if let up = CGEvent(keyboardEventSource: src, virtualKey: 0, keyDown: false) {
-                up.post(tap: .cghidEventTap)
-            }
-        }
-    }
-
-    /// Simulate pressing Delete/Backspace N times.
-    private func cgDeleteBackward(_ count: Int) {
-        let src = CGEventSource(stateID: .hidSystemState)
-        for _ in 0..<count {
-            if let down = CGEvent(keyboardEventSource: src, virtualKey: 51, keyDown: true) {
-                down.post(tap: .cghidEventTap)
-            }
-            if let up = CGEvent(keyboardEventSource: src, virtualKey: 51, keyDown: false) {
-                up.post(tap: .cghidEventTap)
-            }
-        }
     }
 }
