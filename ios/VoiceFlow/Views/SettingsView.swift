@@ -158,10 +158,14 @@ struct SettingsView: View {
                     HStack {
                         Text("Current tier")
                         Spacer()
-                        Text(entitlements.tier == .pro ? "Pro" : "Free")
+                        // HACK: hard-coded "Pro" for internal testing.
+                        Text("Pro")
                             .foregroundStyle(.secondary)
                     }
-                    if !entitlements.hasPro {
+                    // HACK: hide free-tier word counter + upgrade CTA
+                    // by wrapping in `if false`. Revert before public
+                    // release.
+                    if false {
                         HStack {
                             Text("Free words remaining today")
                             Spacer()

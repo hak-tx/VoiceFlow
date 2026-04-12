@@ -240,7 +240,11 @@ struct DictationView: View {
     @ViewBuilder
     private func toneChip(_ preset: TonePreset) -> some View {
         let isActive = engine.tonePreset == preset
-        let isGated = preset.requiresPro && !entitlements.hasPro
+        // HACK: hard-coded false for internal testing so nothing is
+        // Pro-gated in the UI. Revert to
+        //   let isGated = preset.requiresPro && !entitlements.hasPro
+        // before public release.
+        let isGated = false
 
         Button {
             dismissKeyboard()
@@ -294,7 +298,10 @@ struct DictationView: View {
                     HStack(spacing: 6) {
                         Text(activeVocabPackHeadline)
                             .font(.subheadline.weight(.semibold))
-                        if !entitlements.hasPro {
+                        // HACK: PRO tag hard-removed for testing.
+                        // Revert `if false` -> `if !entitlements.hasPro`
+                        // before public release.
+                        if false {
                             Text("PRO")
                                 .font(.system(size: 9, weight: .bold))
                                 .padding(.horizontal, 5)
