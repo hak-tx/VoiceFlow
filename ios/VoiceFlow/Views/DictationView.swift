@@ -54,6 +54,15 @@ struct DictationView: View {
         )
     }
 
+    /// Navigation bar title with the live CFBundleVersion baked in.
+    /// Lets us tell at a glance which build is actually installed
+    /// on the phone vs what TestFlight claims. Also shows "PRO" to
+    /// verify the force-Pro hack is compiled into the current build.
+    private static var navTitleWithBuild: String {
+        let build = Bundle.main.object(forInfoDictionaryKey: "CFBundleVersion") as? String ?? "?"
+        return "VoiceFlow PRO • build \(build)"
+    }
+
     private var visibleTranscript: String {
         if !engine.polishedTranscript.isEmpty {
             return engine.polishedTranscript
@@ -78,7 +87,7 @@ struct DictationView: View {
                 controlBar
             }
             .overlay(alignment: .top) { commandConfirmationPill }
-            .navigationTitle("VoiceFlow")
+            .navigationTitle(Self.navTitleWithBuild)
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
                 ToolbarItem(placement: .topBarLeading) {
