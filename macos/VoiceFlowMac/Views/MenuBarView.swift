@@ -348,14 +348,7 @@ struct MenuBarView: View {
                 .buttonStyle(.plain)
             }
 
-            Button {
-                // Activate the app first, then open Settings.
-                // MenuBarExtra popovers can't send actions without this.
-                NSApp.activate(ignoringOtherApps: true)
-                DispatchQueue.main.asyncAfter(deadline: .now() + 0.1) {
-                    NSApp.sendAction(Selector(("showSettingsWindow:")), to: nil, from: nil)
-                }
-            } label: {
+            SettingsLink {
                 Image(systemName: "gearshape")
                     .font(.system(size: 11))
             }
