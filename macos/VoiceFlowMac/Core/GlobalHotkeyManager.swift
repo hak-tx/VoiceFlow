@@ -136,8 +136,14 @@ final class GlobalHotkeyManager: ObservableObject {
             callback: callback,
             userInfo: nil
         ) else {
-            hasAccessibilityPermission = false
-            log.error("CGEvent.tapCreate FAILED — Accessibility permission not granted or sandbox blocking")
+            // Don't lie about permission status — check it separately.
+            let trusted = AXIsProcessTrusted()
+            hasAccessibilityPermission = trusted
+            if trusted {
+                log.error("CGEvent.tapCreate FAILED — Accessibility IS granted but event tap still failed. App Sandbox is likely enabled in build settings (Signing & Capabilities). Remove it.")
+            } else {
+                log.error("CGEvent.tapCreate FAILED — Accessibility not granted")
+            }
             return
         }
 

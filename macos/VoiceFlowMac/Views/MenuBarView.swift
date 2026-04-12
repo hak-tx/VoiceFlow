@@ -241,6 +241,17 @@ struct MenuBarView: View {
                     .padding(.horizontal, 14)
                 }
 
+                // Status message (e.g., "Copied to clipboard")
+                if let status = coordinator.statusMessage {
+                    HStack(spacing: 4) {
+                        Image(systemName: "checkmark.circle.fill")
+                            .foregroundStyle(.green)
+                        Text(status)
+                            .font(.system(size: 11, weight: .medium))
+                    }
+                    .padding(.horizontal, 14)
+                }
+
                 // Error + retry
                 if let error = coordinator.lastPolishError {
                     VStack(spacing: 4) {
@@ -289,13 +300,14 @@ struct MenuBarView: View {
 
             Spacer()
 
-            // Manual start/stop button.
+            // Start/stop dictation. Transcript shows here in the
+            // popover, cleaned text auto-copies to clipboard.
             Button {
                 Task {
                     if engine.isRecording {
-                        await coordinator.stopDictationManually()
+                        await coordinator.stopDictation()
                     } else {
-                        await coordinator.startDictationManually()
+                        await coordinator.startFromPopover()
                     }
                 }
             } label: {

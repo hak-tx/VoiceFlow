@@ -2,16 +2,19 @@
 //  AppCoordinator.swift
 //  VoiceFlowMac
 //
-//  Single point of truth for app-level wiring and lifecycle.
+//  Two modes of operation:
 //
-//  Core UX flow:
-//    1. User presses ⌃⌃ — dictation starts
-//    2. Live text streams directly at the cursor in whatever app
-//       the user is in (not in VoiceFlow's UI)
-//    3. User presses ⌃⌃ again — dictation stops
-//    4. Raw text at the cursor is replaced with LLM-cleaned version
+//  WITHOUT Accessibility (default, works immediately):
+//    1. Click mic in popover → dictation starts
+//    2. Speak → live transcript shows in popover
+//    3. Click stop → Claude cleans up
+//    4. Cleaned text auto-copied to clipboard
+//    5. User pastes with ⌘V wherever they want
 //
-//  The menu bar popover is for settings only, not for transcript display.
+//  WITH Accessibility (when permission is granted):
+//    1. ⌃⌃ hotkey starts dictation from anywhere
+//    2. Text streams live at the cursor
+//    3. ⌃⌃ again stops → Claude cleans and replaces in-place
 //
 
 import Foundation
@@ -24,8 +27,6 @@ private let log = Logger(subsystem: "com.hak-tx.voiceflow.mac", category: "Coord
 @MainActor
 final class AppCoordinator: ObservableObject {
 
-    // MARK: - Owned managers
-
     let settings: MacAppSettings
     let engine: MacDictationEngine
     let vocabManager: MacVocabPackManager
@@ -37,21 +38,14 @@ final class AppCoordinator: ObservableObject {
     @Published var lastPolishError: String?
     @Published private(set) var isRetrying = false
 
-    // MARK: - Live typing state
+    /// Status message shown in the popover after polish completes.
+    @Published var statusMessage: String?
 
-    /// Tracks how many characters of raw transcript we've already
-    /// typed into the target app. On each transcript update, we only
-    /// type the NEW characters (the delta) so we don't retype everything.
+    // Live typing state (only used when Accessibility is available)
     private var insertedCharCount: Int = 0
-
-    /// The cursor position where we started inserting. Used to select
-    /// and replace the raw text with the polished version.
     private var insertionStart: Int = 0
-
-    /// Observe liveTranscript changes to stream text to cursor.
     private var transcriptObserver: AnyCancellable?
-
-    // MARK: - Init
+    private var isLiveTypingActive = false
 
     init() {
         self.settings = MacAppSettings()
@@ -62,58 +56,44 @@ final class AppCoordinator: ObservableObject {
         self.accessibilityManager = AccessibilityTextManager()
     }
 
-    // MARK: - One-time setup
-
     func setup() {
-        guard !isSetupComplete else {
-            log.warning("setup() called more than once — ignoring")
-            return
-        }
+        guard !isSetupComplete else { return }
         isSetupComplete = true
-        log.info("AppCoordinator.setup() — wiring dependencies")
+        log.info("AppCoordinator.setup()")
 
         engine.vocabManager = vocabManager
         engine.settings = settings
         engine.silenceThreshold = settings.silenceAutoStopSeconds
 
-        // Wire hotkey → dictation pipeline.
+        // Wire hotkey (only works with Accessibility)
         hotkeyManager.onActivate = { [weak self] in
             guard let self else { return }
-            Task { @MainActor in
-                await self.handleHotkeyActivate()
-            }
+            Task { @MainActor in await self.startWithHotkey() }
         }
-
         hotkeyManager.onDeactivate = { [weak self] in
             guard let self else { return }
-            Task { @MainActor in
-                await self.handleHotkeyDeactivate()
-            }
+            Task { @MainActor in await self.stopDictation() }
         }
 
-        // Wire polish complete → replace raw text with cleaned version.
+        // Polish complete → copy to clipboard (always), insert at
+        // cursor (only if Accessibility + live typing active)
         engine.onPolishComplete = { [weak self] text in
             guard let self else { return }
-            Task { @MainActor in
-                self.handlePolishComplete(text)
-            }
+            Task { @MainActor in self.handlePolishComplete(text) }
         }
 
-        // Wire silence auto-stop.
         engine.onSilenceDetected = { [weak self] in
             guard let self else { return }
-            Task { @MainActor in
-                log.info("Silence detected — auto-stopping")
-                await self.engine.stop()
-            }
+            Task { @MainActor in await self.stopDictation() }
         }
 
+        // Try to install hotkey (will silently fail without Accessibility)
         hotkeyManager.install()
 
-        // Auto-prompt for Accessibility permission on first launch.
         if !hotkeyManager.hasAccessibilityPermission {
-            log.info("Accessibility not granted — prompting user")
-            hotkeyManager.requestAccessibilityPermission()
+            log.info("No Accessibility — running in clipboard mode")
+        } else {
+            log.info("Accessibility granted — hotkey + cursor mode active")
         }
 
         Task {
@@ -122,28 +102,23 @@ final class AppCoordinator: ObservableObject {
         }
     }
 
-    // MARK: - Hotkey handlers
+    // MARK: - Start dictation from hotkey (with Accessibility)
 
-    private func handleHotkeyActivate() async {
-        log.info("Hotkey activated — starting dictation")
+    private func startWithHotkey() async {
+        log.info("Hotkey activated")
         lastPolishError = nil
+        statusMessage = nil
 
-        // Snapshot cursor position.
         accessibilityManager.captureCurrentContext()
-
-        // Remember where we're starting to type.
         insertionStart = accessibilityManager.selectedRange.location
         insertedCharCount = 0
 
-        // If there's selected text, we'll replace it.
         if !accessibilityManager.selectedText.isEmpty {
-            log.info("Selection detected (\(self.accessibilityManager.selectedText.count) chars) — will replace on completion")
             let ctx = accessibilityManager.surroundingContext()
             let range = NSRange(
                 location: accessibilityManager.selectedRange.location,
                 length: accessibilityManager.selectedRange.length
             )
-            // Delete the selected text first — we'll type fresh.
             accessibilityManager.insertText("")
             await engine.startReplacingSelection(
                 in: accessibilityManager.fullText,
@@ -155,10 +130,9 @@ final class AppCoordinator: ObservableObject {
             await engine.start()
         }
 
-        // Start observing transcript changes to stream text at cursor.
         startLiveTyping()
+        isLiveTypingActive = true
 
-        // Show a minimal overlay (just recording indicator, not transcript).
         overlayController.show(
             near: accessibilityManager.cursorRect,
             engine: engine,
@@ -166,24 +140,31 @@ final class AppCoordinator: ObservableObject {
         )
     }
 
-    private func handleHotkeyDeactivate() async {
-        log.info("Hotkey deactivated — stopping dictation")
+    // MARK: - Start dictation from mic button (no Accessibility needed)
 
-        // Stop observing transcript so we don't type during polish.
+    func startFromPopover() async {
+        log.info("Starting dictation from popover (clipboard mode)")
+        lastPolishError = nil
+        statusMessage = nil
+        isLiveTypingActive = false
+        await engine.start()
+    }
+
+    // MARK: - Stop dictation
+
+    func stopDictation() async {
+        log.info("Stopping dictation")
         stopLiveTyping()
-
         await engine.stop()
     }
 
-    // MARK: - Live typing at cursor
+    // MARK: - Live typing (Accessibility mode only)
 
-    /// Watch engine.liveTranscript and type new characters at the
-    /// cursor in real-time as the user speaks.
     private func startLiveTyping() {
         transcriptObserver = engine.$liveTranscript
             .receive(on: DispatchQueue.main)
             .sink { [weak self] newTranscript in
-                guard let self, self.engine.isRecording else { return }
+                guard let self, self.engine.isRecording, self.isLiveTypingActive else { return }
                 self.pushToCursor(newTranscript)
             }
     }
@@ -193,83 +174,65 @@ final class AppCoordinator: ObservableObject {
         transcriptObserver = nil
     }
 
-    /// Push the full transcript to the cursor position, replacing
-    /// whatever we previously inserted. We do NOT use deltas because
-    /// the speech recognizer revises earlier words as it gets more
-    /// context (e.g., "Testing test" → "Testing testing"). Delta
-    /// appending would duplicate text in that case.
     private func pushToCursor(_ fullTranscript: String) {
         if insertedCharCount > 0 {
-            // Replace everything we've typed so far with the updated transcript.
             let replaceRange = CFRange(
                 location: insertionStart,
                 length: insertedCharCount
             )
             accessibilityManager.replaceRange(replaceRange, with: fullTranscript)
         } else if !fullTranscript.isEmpty {
-            // First insert.
             accessibilityManager.insertText(fullTranscript)
         }
         insertedCharCount = fullTranscript.count
     }
 
-    // MARK: - Polish complete handler
+    // MARK: - Polish complete
 
     private func handlePolishComplete(_ text: String) {
-        log.info("Polish complete — \(text.count) chars, replacing \(self.insertedCharCount) raw chars")
+        log.info("Polish complete — \(text.count) chars")
 
-        // Select the raw text we typed and replace with cleaned version.
-        let replaceRange = CFRange(
-            location: insertionStart,
-            length: insertedCharCount
-        )
-        accessibilityManager.replaceRange(replaceRange, with: text)
-        insertedCharCount = text.count
+        if isLiveTypingActive {
+            // Replace raw text at cursor with cleaned version
+            let replaceRange = CFRange(
+                location: insertionStart,
+                length: insertedCharCount
+            )
+            accessibilityManager.replaceRange(replaceRange, with: text)
+            insertedCharCount = text.count
+        }
+
+        // ALWAYS copy to clipboard regardless of mode
+        NSPasteboard.general.clearContents()
+        NSPasteboard.general.setString(text, forType: .string)
+        statusMessage = "Copied to clipboard — paste with ⌘V"
+        log.info("Cleaned text copied to clipboard")
 
         if settings.playSoundEffects {
             NSSound(named: "Blow")?.play()
         }
 
-        // Dismiss overlay.
-        Task {
-            try? await Task.sleep(nanoseconds: 500_000_000)
-            overlayController.dismiss()
-            hotkeyManager.deactivate()
+        if isLiveTypingActive {
+            Task {
+                try? await Task.sleep(nanoseconds: 500_000_000)
+                overlayController.dismiss()
+                hotkeyManager.deactivate()
+            }
         }
+
+        isLiveTypingActive = false
     }
 
-    // MARK: - Retry logic
+    // MARK: - Retry
 
     func retryPolish() async {
         guard !engine.liveTranscript.isEmpty else { return }
         isRetrying = true
         lastPolishError = nil
-        log.info("Retrying polish...")
         await engine.polish()
         isRetrying = false
         if engine.errorMessage != nil {
             lastPolishError = engine.errorMessage
         }
-    }
-
-    // MARK: - Manual start/stop (from menu bar UI)
-
-    /// Start dictation from the menu bar mic button. Dismisses the
-    /// popover first so focus returns to whatever app the user was
-    /// in, then captures cursor position and begins recording.
-    func startDictationManually() async {
-        // Dismiss the menu bar popover so focus goes back to the
-        // user's target app. Without this, the AX API reads the
-        // popover's text fields instead of the target app's.
-        NSApp.keyWindow?.close()
-
-        // Wait for focus to actually transfer back.
-        try? await Task.sleep(nanoseconds: 300_000_000)
-
-        await handleHotkeyActivate()
-    }
-
-    func stopDictationManually() async {
-        await handleHotkeyDeactivate()
     }
 }
