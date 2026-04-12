@@ -109,10 +109,8 @@ final class MacDictationEngine: ObservableObject {
         recognitionTask?.cancel()
         recognitionTask = nil
         recognitionRequest = nil
-        if audioEngine.isRunning {
-            audioEngine.inputNode.removeTap(onBus: 0)
-            audioEngine.stop()
-        }
+        audioEngine.inputNode.removeTap(onBus: 0)
+        audioEngine.stop()
         isRecording = false
     }
 
@@ -120,10 +118,8 @@ final class MacDictationEngine: ObservableObject {
         rotationTimer?.invalidate()
         silenceTimer?.invalidate()
         recognitionTask?.cancel()
-        if audioEngine.isRunning {
-            audioEngine.inputNode.removeTap(onBus: 0)
-            audioEngine.stop()
-        }
+        audioEngine.inputNode.removeTap(onBus: 0)
+        audioEngine.stop()
     }
 
     // MARK: - Permissions
@@ -312,10 +308,12 @@ final class MacDictationEngine: ObservableObject {
         recognitionTask = nil
         recognitionRequest = nil
 
-        if audioEngine.isRunning {
-            audioEngine.inputNode.removeTap(onBus: 0)
-            audioEngine.stop()
-        }
+        // ALWAYS remove tap and stop — not just when isRunning.
+        // If we only clean up when isRunning, a stale tap from a
+        // failed/crashed session blocks the next installTap() call,
+        // making the hotkey work exactly once then break.
+        audioEngine.inputNode.removeTap(onBus: 0)
+        audioEngine.stop()
     }
 
     private func buildFinalTranscript() -> String {
