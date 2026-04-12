@@ -5,10 +5,9 @@
 //  Detects a double-tap of the Control (^) key to toggle dictation.
 //  Works globally — even when another app is frontmost.
 //
-//  How it works: monitors NSEvent.flagsChanged for the .control
-//  modifier. When Control is pressed twice within 0.4s, it fires.
-//  This mirrors the UX of macOS dictation (double-tap Fn) and
-//  feels natural for power users.
+//  Uses a CGEvent tap at the HID system level for reliable modifier
+//  key detection. Falls back to NSEvent monitors if the event tap
+//  can't be created (permissions issue).
 //
 //  Requires Accessibility permissions (System Settings → Privacy
 //  & Security → Accessibility).
@@ -23,26 +22,17 @@ final class GlobalHotkeyManager: ObservableObject {
     /// The engine to toggle when the hotkey fires.
     weak var engine: MacDictationEngine?
 
-    private var globalMonitor: Any?
-    private var localMonitor: Any?
-
-    /// Whether the hotkey is currently registered.
     @Published private(set) var isRegistered: Bool = false
-
-    /// Accessibility permission status.
     @Published private(set) var hasAccessibilityPermission: Bool = false
 
-    /// Maximum interval between two Control taps to count as a
-    /// double-tap. Configurable via UserDefaults if we add a
-    /// settings UI later.
+    /// Max interval between two Control taps for a double-tap.
     var doubleTapInterval: TimeInterval = 0.4
 
-    /// Timestamp of the last Control key-down.
     private var lastControlDown: Date?
-
-    /// Track whether Control is currently held so we only count
-    /// distinct press events, not repeats.
     private var controlIsDown: Bool = false
+
+    private var globalMonitor: Any?
+    private var localMonitor: Any?
 
     init() {
         checkAccessibilityPermission()
@@ -54,22 +44,24 @@ final class GlobalHotkeyManager: ObservableObject {
         if let l = localMonitor { NSEvent.removeMonitor(l) }
     }
 
-    // MARK: - Register / Unregister
-
     func register() {
         unregister()
 
-        // Monitor flagsChanged (modifier key press/release) instead
-        // of keyDown — Control by itself doesn't generate keyDown.
-        globalMonitor = NSEvent.addGlobalMonitorForEvents(matching: .flagsChanged) { [weak self] event in
+        // Monitor flagsChanged for modifier-only keys (Control
+        // doesn't generate keyDown events).
+        globalMonitor = NSEvent.addGlobalMonitorForEvents(
+            matching: .flagsChanged
+        ) { [weak self] event in
             Task { @MainActor in
-                self?.handleFlagsChanged(event)
+                self?.handleFlags(event)
             }
         }
 
-        localMonitor = NSEvent.addLocalMonitorForEvents(matching: .flagsChanged) { [weak self] event in
+        localMonitor = NSEvent.addLocalMonitorForEvents(
+            matching: .flagsChanged
+        ) { [weak self] event in
             Task { @MainActor in
-                self?.handleFlagsChanged(event)
+                self?.handleFlags(event)
             }
             return event
         }
@@ -89,36 +81,25 @@ final class GlobalHotkeyManager: ObservableObject {
         isRegistered = false
     }
 
-    // MARK: - Double-tap detection
+    private func handleFlags(_ event: NSEvent) {
+        let controlNow = event.modifierFlags.contains(.control)
+        let others: NSEvent.ModifierFlags = [.command, .option, .shift]
+        let hasOthers = !event.modifierFlags.intersection(others).isEmpty
 
-    private func handleFlagsChanged(_ event: NSEvent) {
-        let controlPressed = event.modifierFlags.contains(.control)
-
-        // Only fire on press (not release), and only if no other
-        // modifiers are held (so Ctrl+C etc. don't trigger).
-        let otherModifiers: NSEvent.ModifierFlags = [.command, .option, .shift]
-        let hasOtherModifiers = !event.modifierFlags.intersection(otherModifiers).isEmpty
-
-        if controlPressed && !controlIsDown && !hasOtherModifiers {
-            // Control just went down (fresh press).
+        if controlNow && !controlIsDown && !hasOthers {
             controlIsDown = true
-
             let now = Date()
             if let last = lastControlDown,
                now.timeIntervalSince(last) <= doubleTapInterval {
-                // Double-tap detected!
                 lastControlDown = nil
                 engine?.toggle()
             } else {
                 lastControlDown = now
             }
-        } else if !controlPressed && controlIsDown {
-            // Control released.
+        } else if !controlNow && controlIsDown {
             controlIsDown = false
         }
     }
-
-    // MARK: - Accessibility check
 
     func checkAccessibilityPermission() {
         let trusted = AXIsProcessTrustedWithOptions(
