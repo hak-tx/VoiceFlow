@@ -123,7 +123,6 @@ final class MacDictationEngine: ObservableObject {
         lastNonSilentTime = Date()
 
         do {
-            TonePlayer.shared.playStart()
             try startAudioEngineAndRecognition()
             isRecording = true
             startSilenceTimer()
@@ -135,7 +134,6 @@ final class MacDictationEngine: ObservableObject {
     func stop() {
         guard isRecording else { return }
         isRecording = false
-        TonePlayer.shared.playStop()
         stopSilenceTimer()
         stopAudioEngine()
 
@@ -347,37 +345,23 @@ final class MacDictationEngine: ObservableObject {
         do {
             let cleaned = try await ClaudeCleanup.shared.clean(request)
             polishedTranscript = cleaned
-            copyAndPaste(cleaned)
+
+            if autoClipboard {
+                copyToClipboard(cleaned)
+            }
         } catch {
             errorMessage = "Cleanup failed: \(error.localizedDescription)"
+            // Fall back to raw transcript on clipboard
             polishedTranscript = rawTranscript
-            copyAndPaste(rawTranscript)
+            if autoClipboard {
+                copyToClipboard(rawTranscript)
+            }
         }
     }
 
-    // MARK: - Paste into active app
+    // MARK: - Clipboard
 
-    /// Copy text to clipboard, then paste into the frontmost app
-    /// via AppleScript. No Accessibility permissions needed.
-    private func copyAndPaste(_ text: String) {
-        let pasteboard = NSPasteboard.general
-        pasteboard.clearContents()
-        pasteboard.setString(text, forType: .string)
-
-        // Simulate Cmd+V via AppleScript — works without
-        // Accessibility permissions.
-        let script = NSAppleScript(source: """
-            tell application "System Events"
-                keystroke "v" using command down
-            end tell
-        """)
-        DispatchQueue.main.asyncAfter(deadline: .now() + 0.1) {
-            var error: NSDictionary?
-            script?.executeAndReturnError(&error)
-        }
-    }
-
-    func copyToClipboard(_ text: String) {
+    private func copyToClipboard(_ text: String) {
         let pasteboard = NSPasteboard.general
         pasteboard.clearContents()
         pasteboard.setString(text, forType: .string)
