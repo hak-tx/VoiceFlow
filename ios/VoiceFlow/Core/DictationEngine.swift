@@ -208,10 +208,17 @@ final class DictationEngine: ObservableObject {
         self.replaceRange = safeRange
         self.isReplacingSelection = true
         self.silenceDetectionEnabled = false
-        // Wipe live state so the replacement dictation starts fresh.
-        self.liveTranscript = ""
-        self.polishedTranscript = ""
+        // Keep the existing transcript VISIBLE during replacement
+        // recording — don't clear polishedTranscript. This avoids
+        // the jarring "text disappears" effect. The user will see
+        // the original text while speaking, and the status line
+        // shows what they're saying. When splice completes,
+        // polishedTranscript updates in-place.
         self.stitchedSegments.removeAll()
+        // Store the replacement text in liveTranscript (starts
+        // empty, fills up as user speaks). Since polishedTranscript
+        // is non-empty, visibleTranscript shows the original.
+        self.liveTranscript = ""
         await startInternal()
     }
 
@@ -228,8 +235,14 @@ final class DictationEngine: ObservableObject {
 
         stitchedSegments.removeAll()
         liveTranscript = ""
-        polishedTranscript = ""
-        cachedPolishedTranscript = ""
+        // When in splice-replace mode, keep the polished transcript
+        // visible so the user can see the original text while
+        // recording the replacement. Without this guard, the text
+        // disappears and only reappears after cleanup completes.
+        if !isReplacingSelection {
+            polishedTranscript = ""
+            cachedPolishedTranscript = ""
+        }
         errorMessage = nil
         lastCommandConfirmation = nil
 
@@ -542,12 +555,32 @@ final class DictationEngine: ObservableObject {
         // prompt does the heavy lifting.
         let model: ClaudeCleanup.Model = .haiku
 
+        // Build splice context if we're replacing a selection so
+        // Claude can see the surrounding text and match
+        // capitalization, punctuation, and tone. Without this, a
+        // replacement word gets treated as a standalone sentence
+        // and capitalized incorrectly (e.g. "Pull" mid-sentence).
+        var spliceCtx: ClaudeCleanup.SpliceContext?
+        if let base = replaceBase, let range = replaceRange {
+            let ns = base as NSString
+            let before = ns.substring(to: range.location)
+            let after = ns.substring(from: min(
+                range.location + range.length,
+                ns.length
+            ))
+            spliceCtx = ClaudeCleanup.SpliceContext(
+                before: before,
+                after: after
+            )
+        }
+
         let request = ClaudeCleanup.Request(
             rawTranscript: raw,
             tone: tonePreset,
             packPromptHints: vocabManager?.combinedPromptHints(),
             packTermsBlock: vocabManager?.combinedTermsBlock(),
-            model: model
+            model: model,
+            spliceContext: spliceCtx
         )
 
         do {

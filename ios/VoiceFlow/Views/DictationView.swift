@@ -445,7 +445,11 @@ struct DictationView: View {
 
     private var statusLine: String {
         if engine.isReplacingSelection && engine.isRecording {
-            return "Re-dictating selection… tap to stop"
+            let spoken = engine.liveTranscript
+            if spoken.isEmpty {
+                return "Re-dictating… speak the replacement"
+            }
+            return "Replacing with: \(spoken)"
         }
         if engine.isReplacingSelection && engine.isPolishing {
             return "Splicing replacement…"

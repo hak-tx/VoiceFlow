@@ -38,6 +38,19 @@ struct ClaudeCleanup {
         let packPromptHints: String?
         let packTermsBlock: String?
         let model: Model
+
+        /// When non-nil, the raw transcript is a replacement for a
+        /// selected range inside an existing document. The context
+        /// holds the surrounding text so Claude can match
+        /// capitalization, punctuation, and tone.
+        var spliceContext: SpliceContext?
+    }
+
+    struct SpliceContext {
+        /// Text immediately before the replacement range.
+        let before: String
+        /// Text immediately after the replacement range.
+        let after: String
     }
 
     // MARK: - Errors
@@ -89,11 +102,42 @@ struct ClaudeCleanup {
             throw CleanupError.missingAPIKey
         }
 
-        let systemPrompt = Self.buildSystemPrompt(
+        // Build the system prompt as an array of content blocks so
+        // we can mark the base prompt with cache_control. The base
+        // prompt is ~3000 tokens and identical across every request;
+        // caching it cuts input cost by ~90% on subsequent calls
+        // (Anthropic charges 10% of input price for cached tokens).
+        let systemBlocks = Self.buildSystemBlocks(
             tone: request.tone,
             packPromptHints: request.packPromptHints,
             packTermsBlock: request.packTermsBlock
         )
+
+        // If this is a splice replacement, wrap the user message
+        // with surrounding context so Claude can match the
+        // capitalization, punctuation, and tone of the existing
+        // sentence. Without this, a replacement word gets treated
+        // as a standalone sentence and capitalized incorrectly.
+        let userMessage: String
+        if let ctx = request.spliceContext {
+            userMessage = """
+            You are replacing a highlighted selection inside an existing \
+            document. Here is the surrounding context:
+
+            BEFORE: \(ctx.before.suffix(200))
+            [SELECTED TEXT TO REPLACE]
+            AFTER: \(ctx.after.prefix(200))
+
+            The user spoke this replacement: \(trimmed)
+
+            Clean the replacement to fit naturally in its position. \
+            Match the capitalization (lowercase if mid-sentence), \
+            punctuation, and tone of the surrounding text. Return \
+            ONLY the cleaned replacement — not the surrounding text.
+            """
+        } else {
+            userMessage = trimmed
+        }
 
         var req = URLRequest(url: Self.endpoint)
         req.httpMethod = "POST"
@@ -104,11 +148,11 @@ struct ClaudeCleanup {
         let body: [String: Any] = [
             "model": request.model.rawValue,
             "max_tokens": Self.maxTokens,
-            "system": systemPrompt,
+            "system": systemBlocks,
             "messages": [
                 [
                     "role": "user",
-                    "content": trimmed
+                    "content": userMessage
                 ]
             ]
         ]
@@ -167,9 +211,66 @@ struct ClaudeCleanup {
 
     // MARK: - Prompt assembly
 
-    /// Build the full system prompt by layering the base cleanup
-    /// rules, the active tone preset, active vocab pack prompt hints,
-    /// and the active vocab pack terms/phrases block.
+    /// Build system prompt as an array of content blocks for the
+    /// Anthropic Messages API. The base prompt (which is large and
+    /// identical across all requests) gets `cache_control` so
+    /// Anthropic caches it server-side and charges ~90% less for
+    /// subsequent requests within a 5-minute window.
+    static func buildSystemBlocks(
+        tone: TonePreset,
+        packPromptHints: String?,
+        packTermsBlock: String?
+    ) -> [[String: Any]] {
+        var blocks: [[String: Any]] = []
+
+        // Block 1: base prompt — large, stable, cacheable.
+        blocks.append([
+            "type": "text",
+            "text": Self.baseCleanupPrompt,
+            "cache_control": ["type": "ephemeral"]
+        ])
+
+        // Block 2: tone + pack context — small, changes per request.
+        var dynamicParts: [String] = []
+        dynamicParts.append("Active tone preset: \(tone.title).\n\n" + tone.systemPromptFragment)
+
+        if let hints = packPromptHints, !hints.isEmpty {
+            dynamicParts.append(
+                "The speaker works across multiple professional domains " +
+                "and has activated the following industry vocabulary packs. " +
+                "For EACH dictation, identify which domain(s) are most " +
+                "relevant based on the actual content of the transcript, " +
+                "then apply the corresponding vocabulary rules and domain " +
+                "conventions. If a dictation mixes domains (e.g. a medical " +
+                "professional writing code for an EHR system), apply both " +
+                "sets of rules simultaneously — they are additive, not " +
+                "conflicting.\n\n" +
+                "Active domain context:\n" + hints
+            )
+        }
+        if let terms = packTermsBlock, !terms.isEmpty {
+            dynamicParts.append(
+                "Domain vocabulary (merged from all active packs) — these " +
+                "terms and phrases are SACRED regardless of which domain " +
+                "this particular dictation belongs to. If the raw " +
+                "transcript contains any of these, assume the speaker " +
+                "said it correctly and preserve exact spelling, " +
+                "capitalization, and punctuation. Do NOT 'fix' them into " +
+                "non-domain words or common English substitutes.\n" +
+                terms
+            )
+        }
+
+        blocks.append([
+            "type": "text",
+            "text": dynamicParts.joined(separator: "\n\n---\n\n")
+        ])
+
+        return blocks
+    }
+
+    /// Legacy string version of the system prompt (used by the
+    /// keyboard extension where prompt caching isn't as critical).
     static func buildSystemPrompt(
         tone: TonePreset,
         packPromptHints: String?,
