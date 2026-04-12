@@ -385,21 +385,18 @@ final class MacDictationEngine: ObservableObject {
 
     // MARK: - Live typing at cursor via CGEvent
 
-    /// Type incremental updates into the active app. Compares the
-    /// new transcript against what we already typed. If the new text
-    /// is an extension, types only the new characters. If the
-    /// recognizer revised earlier words, deletes everything and
-    /// retypes the full text.
+    /// Type incremental updates into the active app.
     private func typeIncrementalUpdate(_ current: String) {
+        print("[VF] typeIncremental: '\(current.prefix(30))' (typed=\(typedCharCount))")
         if current.hasPrefix(lastTypedText) {
-            // Append only new characters.
             let newPart = String(current.dropFirst(lastTypedText.count))
             if !newPart.isEmpty {
+                print("[VF] Appending: '\(newPart.prefix(20))'")
                 cgType(newPart)
                 typedCharCount += newPart.count
             }
         } else {
-            // Recognizer revised earlier words — delete and retype.
+            print("[VF] Revision detected, retyping all")
             cgDeleteBackward(typedCharCount)
             cgType(current)
             typedCharCount = current.count
