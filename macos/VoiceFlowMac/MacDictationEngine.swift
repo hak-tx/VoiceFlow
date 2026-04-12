@@ -300,6 +300,16 @@ final class MacDictationEngine: ObservableObject {
         let inputNode = audioEngine.inputNode
         let format = inputNode.outputFormat(forBus: 0)
 
+        print("[VF] Audio format: \(format.sampleRate)Hz, \(format.channelCount)ch")
+
+        guard format.sampleRate > 0, format.channelCount > 0 else {
+            throw NSError(
+                domain: "MacDictationEngine",
+                code: -2,
+                userInfo: [NSLocalizedDescriptionKey: "No audio input device. Check System Settings > Sound > Input and Privacy > Microphone."]
+            )
+        }
+
         if keepingAudioEngineRunning {
             inputNode.removeTap(onBus: 0)
         }
