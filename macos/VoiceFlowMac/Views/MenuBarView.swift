@@ -22,14 +22,14 @@ struct MenuBarView: View {
 
     @State private var showingVocabPicker = false
     @State private var apiKeyInput: String = ""
-    @State private var showingAPIKeyField = false
+    @State private var apiKeyConfigured: Bool = Secrets.isAPIKeyConfigured
 
     var body: some View {
         VStack(spacing: 0) {
             header
 
-            // Setup prompts — show until configured
-            if !Secrets.isAPIKeyConfigured || !hotkeyManager.hasAccessibilityPermission {
+            // Setup prompts — always show until both are done
+            if !apiKeyConfigured || !hotkeyManager.hasAccessibilityPermission {
                 Divider()
                 setupPrompts
             }
@@ -108,17 +108,19 @@ struct MenuBarView: View {
     private var setupPrompts: some View {
         VStack(alignment: .leading, spacing: 8) {
             // API Key
-            if !Secrets.isAPIKeyConfigured {
-                VStack(alignment: .leading, spacing: 4) {
+            if !apiKeyConfigured {
+                VStack(alignment: .leading, spacing: 6) {
                     HStack(spacing: 4) {
                         Image(systemName: "key.fill")
                             .foregroundStyle(.orange)
-                            .font(.system(size: 10))
-                        Text("Enter your Anthropic API key:")
-                            .font(.system(size: 11, weight: .medium))
+                        Text("Anthropic API Key")
+                            .font(.system(size: 12, weight: .semibold))
                     }
+                    Text("Paste your API key below. Get one at console.anthropic.com")
+                        .font(.system(size: 10))
+                        .foregroundStyle(.secondary)
                     HStack(spacing: 6) {
-                        SecureField("sk-ant-api03-...", text: $apiKeyInput)
+                        TextField("sk-ant-api03-...", text: $apiKeyInput)
                             .textFieldStyle(.roundedBorder)
                             .font(.system(size: 11, design: .monospaced))
                         Button("Save") {
@@ -126,7 +128,9 @@ struct MenuBarView: View {
                             guard !trimmed.isEmpty else { return }
                             Secrets.saveAPIKey(trimmed)
                             apiKeyInput = ""
+                            apiKeyConfigured = true
                         }
+                        .buttonStyle(.borderedProminent)
                         .controlSize(.small)
                         .disabled(apiKeyInput.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty)
                     }
