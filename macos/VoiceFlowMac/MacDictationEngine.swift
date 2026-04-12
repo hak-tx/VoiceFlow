@@ -121,8 +121,6 @@ final class MacDictationEngine: ObservableObject {
         polishedTranscript = ""
         finalizedText = ""
         lastNonSilentTime = Date()
-        typedCharacterCount = 0
-        previousLiveTranscript = ""
 
         do {
             TonePlayer.shared.playStart()
