@@ -200,8 +200,13 @@ final class MacDictationEngine: ObservableObject {
             )
         }
 
+        var bufferCount = 0
         inputNode.installTap(onBus: 0, bufferSize: 1024, format: recordingFormat) { buffer, _ in
             request.append(buffer)
+            bufferCount += 1
+            if bufferCount % 50 == 1 {
+                print("[VF] Audio buffer #\(bufferCount)")
+            }
 
             // Compute RMS on audio thread, update UI on main.
             guard let channelData = buffer.floatChannelData else { return }
@@ -243,8 +248,13 @@ final class MacDictationEngine: ObservableObject {
             Task { @MainActor in
                 guard let self else { return }
 
+                if let error {
+                    print("[VF] Recognition error: \(error.localizedDescription)")
+                }
+
                 if let result {
                     let partial = result.bestTranscription.formattedString
+                    print("[VF] Transcript: \(partial.prefix(60))")
                     let combined = self.finalizedText.isEmpty
                         ? partial
                         : self.finalizedText + " " + partial
