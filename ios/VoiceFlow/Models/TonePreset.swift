@@ -82,40 +82,68 @@ enum TonePreset: String, CaseIterable, Identifiable, Codable {
         switch self {
         case .verbatim:
             return """
-            Apply only the minimum cleanup needed: remove fillers, fix
-            punctuation, and correct obvious self-corrections. Do NOT
-            restructure sentences or change word choice.
+            Apply only the minimum cleanup needed: remove fillers and mic test \
+            chatter, fix punctuation and capitalization, correct obvious speech-\
+            to-text errors, and collapse self-corrections. Do NOT restructure \
+            sentences, change word choice, or reformat. Output as flowing prose.
             """
         case .email:
             return """
-            Format the output as an email body. Add appropriate
-            paragraph breaks. If the speaker naturally greeted or
-            signed off, preserve that; otherwise do not invent one.
-            Keep the speaker's tone.
+            Format the output as a polished email body:
+            - Break content into clear paragraphs with blank lines between them.
+            - Use complete sentences and a professional tone.
+            - If the speaker opened with a greeting ("Hey John", "Hi team"), keep \
+            it as a standalone first line. If they signed off ("Thanks, Brian"), \
+            keep it as a standalone last line. Do NOT invent a greeting or \
+            sign-off if the speaker didn't include one.
+            - Keep the speaker's tone. If they were casual, keep it casual; if \
+            formal, keep it formal.
             """
         case .slack:
             return """
-            Format the output for a Slack / chat message: short,
-            casual, direct. Split into multiple short messages only if
-            the speaker paused clearly. Preserve the casual tone.
+            Format the output as a Slack / chat message:
+            - Short, direct, conversational.
+            - Trim anything that reads like formal letter-writing.
+            - If the speaker clearly split into multiple thoughts, break into \
+            separate short messages (one per line).
+            - Preserve casual tone, contractions, and any emoji the speaker \
+            mentioned ("heart emoji" -> actual emoji).
             """
         case .notes:
             return """
-            Format the output as concise notes. Use bullet points
-            where the speaker listed items. Keep sentences short.
+            Format the output as clean notes with bullet points:
+            - Any list, sequence of items, or enumeration the speaker dictated \
+            MUST be converted into a bulleted list (use "- " prefix).
+            - Keep each bullet short — one idea per bullet. Break long \
+            sentences into multiple bullets.
+            - If the speaker dictated a single paragraph that isn't obviously \
+            a list, keep it as prose but still clean it up.
+            - Use nested bullets ("  - " indent) for sub-items.
+            - When the speaker says "bullet point" or "next bullet" or similar, \
+            treat that as a separator, don't include the literal words.
             """
         case .socialPost:
             return """
-            Format the output as a short social media post. Trim
-            aggressively. Preserve emoji the speaker mentioned
-            ("heart emoji", "fire emoji") as the actual emoji
-            characters.
+            Format the output as a short social media post:
+            - Trim aggressively. Cut anything that isn't the core message.
+            - Keep it under 280 characters if possible.
+            - Preserve any emoji the speaker mentioned ("heart emoji", "fire \
+            emoji") as the actual emoji characters.
+            - Use hashtags sparingly, only if the speaker explicitly said \
+            "hashtag X".
+            - Punchy tone. Short sentences.
             """
         case .professional:
             return """
-            Apply a formal, professional tone. Fix grammar
-            thoroughly. Do not add content the speaker did not say,
-            but you may tighten phrasing for clarity.
+            Apply a formal, professional tone:
+            - Fix grammar thoroughly. Use complete sentences, proper subject-\
+            verb agreement, active voice where possible.
+            - Tighten phrasing for clarity — replace "a lot of" with "many", \
+            "kind of" with "somewhat", etc. But do NOT add content the \
+            speaker didn't say.
+            - Remove casual hedges ("I think maybe", "you know") unless the \
+            speaker intentionally equivocated.
+            - Use proper business English throughout.
             """
         }
     }

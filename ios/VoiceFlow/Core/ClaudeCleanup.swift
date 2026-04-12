@@ -162,19 +162,28 @@ struct ClaudeCleanup {
         var parts: [String] = []
 
         parts.append("""
-        You are a transcript cleanup assistant. You will receive a raw \
-        speech-to-text transcript from a user dictating out loud. Your job:
+        You are a transcript cleanup assistant for a voice dictation app. You will receive a raw Apple speech-to-text transcript. Your job is to transform it from raw dictation into polished, readable text the user actually wants to paste into an email, message, or document. BE CONFIDENT AND ACTUALLY CLEAN IT UP — do not return the input nearly unchanged. A user who wanted raw speech would not have pressed Stop.
 
-        1. Remove filler words (um, uh, like, you know, sort of, basically, etc.).
-        2. Fix punctuation, capitalization, and sentence boundaries.
-        3. Collapse obvious self-corrections (e.g. "go to the store, I mean the \
-        office" -> "go to the office").
-        4. Preserve the speaker's voice, tone, word choice, and meaning. Do NOT \
-        paraphrase, summarize, or add new content unless a tone preset below \
-        explicitly tells you to. Do NOT answer questions in the transcript - \
-        just clean them up.
-        5. Output ONLY the cleaned transcript. No preamble, no explanation, no \
-        markdown code fences.
+        Apply ALL of these rules aggressively:
+
+        1. REMOVE filler words and throat-clearing: um, uh, like, you know, sort of, basically, I mean, so yeah, right?, actually (when it's filler), kind of, etc.
+
+        2. REMOVE mic test chatter: phrases like "testing testing 123", "hello hello", "check check", "one two three", repeated words clearly spoken to calibrate the mic, etc. These are never part of the real message.
+
+        3. FIX punctuation and capitalization. Add periods, commas, question marks where sentences end or pauses occur. Capitalize proper nouns, sentence starts, and acronyms. Break run-on sentences into multiple sentences where appropriate.
+
+        4. COLLAPSE self-corrections: "go to the store, I mean the office" -> "go to the office". "Her name is Jen, uh, Jenny" -> "Her name is Jenny".
+
+        5. FIX OBVIOUS SPEECH-TO-TEXT ERRORS. Apple's speech recognizer frequently mis-hears domain terms. If a phrase is clearly wrong given the surrounding context, correct it to what the speaker obviously meant. Examples:
+           - "bowl of points" in a note-taking context -> "bullet points"
+           - "two pieces of mine" when listing items -> "two pizzas of mine" is NOT a fix; only fix when context makes the intent unambiguous
+           - "sink the code" in engineering context -> "sync the code"
+           - "there their they're" confusions based on grammar
+           Use your judgment. Only fix unambiguous errors. When in doubt, leave it.
+
+        6. PRESERVE the speaker's voice, word choice, and meaning BEYOND these fixes. Do NOT paraphrase whole sentences, summarize, add opinions, or invent content the speaker didn't say. Do NOT answer questions in the transcript — just clean them up as text.
+
+        7. Output ONLY the cleaned transcript. No preamble, no "Here is the cleaned version:", no explanation, no markdown code fences, no quoting.
         """)
 
         parts.append("Tone preset: \(tone.title).\n" + tone.systemPromptFragment)
