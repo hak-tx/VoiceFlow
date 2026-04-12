@@ -96,6 +96,11 @@ platform :ios do
     )
 
     UI.success("Uploaded build #{next_build} to TestFlight. Wait 5-15 min for Apple processing.")
+
+    # Restore Info.plist to match HEAD so the working tree stays
+    # clean. Without this, the plutil bump above leaves a dirty
+    # file that blocks the next `git pull`.
+    sh("git checkout HEAD -- ../#{INFO_PLIST}")
   end
 
   desc "Build-only sanity check (no upload)"
