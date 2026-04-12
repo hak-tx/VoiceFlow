@@ -305,7 +305,7 @@ struct MenuBarView: View {
             Button {
                 Task {
                     if engine.isRecording {
-                        await coordinator.stopDictation()
+                        await coordinator.stopFromPopover()
                     } else {
                         await coordinator.startFromPopover()
                     }

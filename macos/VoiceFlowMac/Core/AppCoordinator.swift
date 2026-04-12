@@ -2,19 +2,17 @@
 //  AppCoordinator.swift
 //  VoiceFlowMac
 //
-//  Two modes of operation:
+//  Core dictation flow:
+//    1. ⌃⌃ → recording starts, overlay shows live transcript
+//    2. User speaks → transcript updates in overlay
+//    3. ⌃⌃ → stops, sends to Claude Haiku for cleanup
+//    4. Cleaned text inserted at cursor via single Cmd+V paste
 //
-//  WITHOUT Accessibility (default, works immediately):
-//    1. Click mic in popover → dictation starts
-//    2. Speak → live transcript shows in popover
-//    3. Click stop → Claude cleans up
-//    4. Cleaned text auto-copied to clipboard
-//    5. User pastes with ⌘V wherever they want
-//
-//  WITH Accessibility (when permission is granted):
-//    1. ⌃⌃ hotkey starts dictation from anywhere
-//    2. Text streams live at the cursor
-//    3. ⌃⌃ again stops → Claude cleans and replaces in-place
+//  Text is NOT streamed to the cursor during recording. That approach
+//  (AX replaceRange on every partial result) is unreliable — causes
+//  duplication, doesn't work in all apps, and race-condition-prone.
+//  Instead, the user sees their live transcript in the overlay, and
+//  the final cleaned result is pasted once.
 //
 
 import Foundation
@@ -36,16 +34,7 @@ final class AppCoordinator: ObservableObject {
 
     @Published private(set) var isSetupComplete = false
     @Published var lastPolishError: String?
-    @Published private(set) var isRetrying = false
-
-    /// Status message shown in the popover after polish completes.
     @Published var statusMessage: String?
-
-    // Live typing state (only used when Accessibility is available)
-    private var insertedCharCount: Int = 0
-    private var insertionStart: Int = 0
-    private var transcriptObserver: AnyCancellable?
-    private var isLiveTypingActive = false
 
     init() {
         self.settings = MacAppSettings()
@@ -65,18 +54,16 @@ final class AppCoordinator: ObservableObject {
         engine.settings = settings
         engine.silenceThreshold = settings.silenceAutoStopSeconds
 
-        // Wire hotkey (only works with Accessibility)
         hotkeyManager.onActivate = { [weak self] in
             guard let self else { return }
-            Task { @MainActor in await self.startWithHotkey() }
-        }
-        hotkeyManager.onDeactivate = { [weak self] in
-            guard let self else { return }
-            Task { @MainActor in await self.stopDictation() }
+            Task { @MainActor in await self.hotkeyPressed() }
         }
 
-        // Polish complete → copy to clipboard (always), insert at
-        // cursor (only if Accessibility + live typing active)
+        hotkeyManager.onDeactivate = { [weak self] in
+            guard let self else { return }
+            Task { @MainActor in await self.hotkeyPressed() }
+        }
+
         engine.onPolishComplete = { [weak self] text in
             guard let self else { return }
             Task { @MainActor in self.handlePolishComplete(text) }
@@ -84,55 +71,40 @@ final class AppCoordinator: ObservableObject {
 
         engine.onSilenceDetected = { [weak self] in
             guard let self else { return }
-            Task { @MainActor in await self.stopDictation() }
+            Task { @MainActor in await self.stopAndClean() }
         }
 
-        // Try to install hotkey (will silently fail without Accessibility)
         hotkeyManager.install()
-
-        if !hotkeyManager.hasAccessibilityPermission {
-            log.info("No Accessibility — running in clipboard mode")
-        } else {
-            log.info("Accessibility granted — hotkey + cursor mode active")
-        }
 
         Task {
             await vocabManager.loadInstalledPacks()
-            log.info("Loaded \(self.vocabManager.installedPacks.count) vocab packs")
+            log.info("Loaded \(self.vocabManager.installedPacks.count) packs, \(self.vocabManager.activePackNames.count) active")
         }
     }
 
-    // MARK: - Start dictation from hotkey (with Accessibility)
+    // MARK: - Hotkey toggle
 
-    private func startWithHotkey() async {
-        log.info("Hotkey activated")
+    private func hotkeyPressed() async {
+        if engine.isRecording {
+            await stopAndClean()
+        } else {
+            await startRecording()
+        }
+    }
+
+    // MARK: - Start
+
+    private func startRecording() async {
+        log.info("Starting dictation")
         lastPolishError = nil
         statusMessage = nil
 
+        // Capture cursor position for the overlay placement.
         accessibilityManager.captureCurrentContext()
-        insertionStart = accessibilityManager.selectedRange.location
-        insertedCharCount = 0
 
-        if !accessibilityManager.selectedText.isEmpty {
-            let ctx = accessibilityManager.surroundingContext()
-            let range = NSRange(
-                location: accessibilityManager.selectedRange.location,
-                length: accessibilityManager.selectedRange.length
-            )
-            accessibilityManager.insertText("")
-            await engine.startReplacingSelection(
-                in: accessibilityManager.fullText,
-                range: range,
-                before: ctx.before,
-                after: ctx.after
-            )
-        } else {
-            await engine.start()
-        }
+        await engine.start()
 
-        startLiveTyping()
-        isLiveTypingActive = true
-
+        // Show overlay near cursor with live transcript.
         overlayController.show(
             near: accessibilityManager.cursorRect,
             engine: engine,
@@ -140,97 +112,74 @@ final class AppCoordinator: ObservableObject {
         )
     }
 
-    // MARK: - Start dictation from mic button (no Accessibility needed)
+    // MARK: - Stop and clean
 
-    func startFromPopover() async {
-        log.info("Starting dictation from popover (clipboard mode)")
-        lastPolishError = nil
-        statusMessage = nil
-        isLiveTypingActive = false
-        await engine.start()
-    }
-
-    // MARK: - Stop dictation
-
-    func stopDictation() async {
-        log.info("Stopping dictation")
-        stopLiveTyping()
+    private func stopAndClean() async {
+        log.info("Stopping dictation — sending to Claude")
         await engine.stop()
+        // engine.stop() calls polish() internally, which triggers
+        // onPolishComplete when done.
     }
 
-    // MARK: - Live typing (Accessibility mode only)
-
-    private func startLiveTyping() {
-        transcriptObserver = engine.$liveTranscript
-            .receive(on: DispatchQueue.main)
-            .sink { [weak self] newTranscript in
-                guard let self, self.engine.isRecording, self.isLiveTypingActive else { return }
-                self.pushToCursor(newTranscript)
-            }
-    }
-
-    private func stopLiveTyping() {
-        transcriptObserver?.cancel()
-        transcriptObserver = nil
-    }
-
-    private func pushToCursor(_ fullTranscript: String) {
-        if insertedCharCount > 0 {
-            let replaceRange = CFRange(
-                location: insertionStart,
-                length: insertedCharCount
-            )
-            accessibilityManager.replaceRange(replaceRange, with: fullTranscript)
-        } else if !fullTranscript.isEmpty {
-            accessibilityManager.insertText(fullTranscript)
-        }
-        insertedCharCount = fullTranscript.count
-    }
-
-    // MARK: - Polish complete
+    // MARK: - Polish complete → paste at cursor
 
     private func handlePolishComplete(_ text: String) {
         log.info("Polish complete — \(text.count) chars")
 
-        if isLiveTypingActive {
-            // Replace raw text at cursor with cleaned version
-            let replaceRange = CFRange(
-                location: insertionStart,
-                length: insertedCharCount
-            )
-            accessibilityManager.replaceRange(replaceRange, with: text)
-            insertedCharCount = text.count
+        guard !text.isEmpty else {
+            log.warning("Polish returned empty text")
+            overlayController.dismiss()
+            hotkeyManager.deactivate()
+            return
         }
 
-        // ALWAYS copy to clipboard regardless of mode
+        // Copy to clipboard.
         NSPasteboard.general.clearContents()
         NSPasteboard.general.setString(text, forType: .string)
-        statusMessage = "Copied to clipboard — paste with ⌘V"
-        log.info("Cleaned text copied to clipboard")
+
+        // Paste at cursor with Cmd+V.
+        let source = CGEventSource(stateID: .hidSystemState)
+        let keyDown = CGEvent(keyboardEventSource: source, virtualKey: 0x09, keyDown: true)
+        keyDown?.flags = .maskCommand
+        let keyUp = CGEvent(keyboardEventSource: source, virtualKey: 0x09, keyDown: false)
+        keyUp?.flags = .maskCommand
+        keyDown?.post(tap: .cghidEventTap)
+        keyUp?.post(tap: .cghidEventTap)
+
+        statusMessage = "Pasted at cursor"
+        log.info("Text pasted via Cmd+V")
 
         if settings.playSoundEffects {
             NSSound(named: "Blow")?.play()
         }
 
-        if isLiveTypingActive {
-            Task {
-                try? await Task.sleep(nanoseconds: 500_000_000)
-                overlayController.dismiss()
-                hotkeyManager.deactivate()
-            }
+        // Dismiss overlay after brief delay.
+        Task {
+            try? await Task.sleep(nanoseconds: 600_000_000)
+            overlayController.dismiss()
+            hotkeyManager.deactivate()
         }
+    }
 
-        isLiveTypingActive = false
+    // MARK: - Popover mic button
+
+    func startFromPopover() async {
+        log.info("Starting from popover")
+        lastPolishError = nil
+        statusMessage = nil
+        await engine.start()
+    }
+
+    func stopFromPopover() async {
+        await stopAndClean()
     }
 
     // MARK: - Retry
 
     func retryPolish() async {
         guard !engine.liveTranscript.isEmpty else { return }
-        isRetrying = true
         lastPolishError = nil
         await engine.polish()
-        isRetrying = false
         if engine.errorMessage != nil {
             lastPolishError = engine.errorMessage
         }

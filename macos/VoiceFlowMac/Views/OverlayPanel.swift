@@ -2,10 +2,13 @@
 //  OverlayPanel.swift
 //  VoiceFlowMac
 //
-//  A tiny floating status pill that appears near the cursor during
-//  dictation. Shows ONLY a recording/polishing indicator — the actual
-//  text goes directly into the target app at the cursor via
-//  AccessibilityTextManager.
+//  Floating panel near the cursor during dictation. Shows:
+//    - Recording status indicator
+//    - Live transcript as the user speaks
+//    - "Cleaning up..." while Claude processes
+//    - Active tone preset badge
+//
+//  Non-activating (doesn't steal focus from the target app).
 //
 
 import SwiftUI
@@ -23,14 +26,17 @@ final class OverlayPanelController: ObservableObject {
     ) {
         guard settings.showOverlayDuringDictation else { return }
 
-        let contentView = OverlayPill()
+        // Dismiss any existing panel first.
+        dismiss()
+
+        let contentView = OverlayContentView()
             .environmentObject(engine)
 
         let hostingView = NSHostingView(rootView: contentView)
-        let pillSize = CGSize(width: 140, height: 32)
-        hostingView.frame = NSRect(origin: .zero, size: pillSize)
+        let panelSize = CGSize(width: 340, height: 120)
+        hostingView.frame = NSRect(origin: .zero, size: panelSize)
 
-        let panelRect = positionPanel(near: rect, size: pillSize)
+        let panelRect = positionPanel(near: rect, size: panelSize)
 
         let panel = NSPanel(
             contentRect: panelRect,
@@ -87,31 +93,61 @@ final class OverlayPanelController: ObservableObject {
     }
 }
 
-// MARK: - Tiny status pill
+// MARK: - Overlay content
 
-struct OverlayPill: View {
+struct OverlayContentView: View {
     @EnvironmentObject var engine: MacDictationEngine
 
     var body: some View {
-        HStack(spacing: 6) {
-            Circle()
-                .fill(engine.isPolishing ? Color.orange : Color.red)
-                .frame(width: 8, height: 8)
+        VStack(alignment: .leading, spacing: 6) {
+            // Status + tone
+            HStack {
+                Circle()
+                    .fill(engine.isPolishing ? Color.orange : Color.red)
+                    .frame(width: 8, height: 8)
 
-            Text(engine.isPolishing ? "Cleaning up..." : "Recording")
-                .font(.system(size: 11, weight: .medium))
-                .foregroundStyle(.primary)
+                Text(engine.isPolishing ? "Cleaning up..." : "Recording")
+                    .font(.system(size: 11, weight: .semibold))
+                    .foregroundStyle(.secondary)
+
+                Spacer()
+
+                Text(engine.tonePreset.title)
+                    .font(.system(size: 10, weight: .medium))
+                    .foregroundStyle(.secondary)
+                    .padding(.horizontal, 6)
+                    .padding(.vertical, 2)
+                    .background(
+                        RoundedRectangle(cornerRadius: 4)
+                            .fill(Color.secondary.opacity(0.15))
+                    )
+            }
+
+            // Live transcript
+            if engine.liveTranscript.isEmpty && engine.isRecording {
+                Text("Listening...")
+                    .font(.system(size: 13))
+                    .foregroundStyle(.tertiary)
+                    .italic()
+            } else if !engine.liveTranscript.isEmpty {
+                ScrollView {
+                    Text(engine.liveTranscript)
+                        .font(.system(size: 13))
+                        .frame(maxWidth: .infinity, alignment: .leading)
+                }
+                .frame(maxHeight: 70)
+            }
         }
-        .padding(.horizontal, 12)
-        .padding(.vertical, 6)
+        .padding(12)
+        .frame(width: 320, alignment: .leading)
         .background(
-            Capsule()
+            RoundedRectangle(cornerRadius: 10, style: .continuous)
                 .fill(.ultraThickMaterial)
         )
         .overlay(
-            Capsule()
+            RoundedRectangle(cornerRadius: 10, style: .continuous)
                 .strokeBorder(Color.primary.opacity(0.1), lineWidth: 0.5)
         )
-        .shadow(color: .black.opacity(0.15), radius: 8, y: 2)
+        .shadow(color: .black.opacity(0.15), radius: 8, y: 3)
     }
 }
