@@ -69,6 +69,20 @@ struct MenuBarView: View {
                 .fixedSize()
             }
 
+            // Vocab packs (placeholder — packs loaded from iOS bundle)
+            HStack {
+                Text("Vocab:")
+                    .foregroundColor(.secondary)
+                    .font(.caption)
+                Text("General Business")
+                    .font(.caption)
+                    .foregroundColor(.primary)
+                Spacer()
+                Text("Edit…")
+                    .font(.caption2)
+                    .foregroundColor(.accentColor)
+            }
+
             // Status
             if engine.isPolishing {
                 HStack(spacing: 4) {
