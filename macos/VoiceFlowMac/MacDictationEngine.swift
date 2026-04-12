@@ -385,10 +385,9 @@ final class MacDictationEngine: ObservableObject {
 
     // MARK: - Live typing at cursor via CGEvent
 
-    /// Insert text at the cursor in the frontmost app using the
-    /// Accessibility API (AXUIElement). This uses the EXISTING
-    /// Accessibility permission — no Automation, no CGEvent, no
-    /// AppleScript needed.
+    /// Insert text at the cursor in the frontmost app.
+    /// Uses CGEvent keyboard simulation — requires Accessibility
+    /// permission on a stable (non-Xcode-debug) binary.
     private func pasteTextAtCursor(_ text: String) {
         guard !text.isEmpty else { return }
 
@@ -397,50 +396,17 @@ final class MacDictationEngine: ObservableObject {
         pb.clearContents()
         pb.setString(text, forType: .string)
 
-        // Find the focused UI element via Accessibility API.
-        let systemWide = AXUIElementCreateSystemWide()
-        var focusedRaw: AnyObject?
-        let focusResult = AXUIElementCopyAttributeValue(
-            systemWide,
-            kAXFocusedUIElementAttribute as CFString,
-            &focusedRaw
-        )
-
-        guard focusResult == .success,
-              let focused = focusedRaw else {
-            print("[VF] Could not get focused element: \(focusResult.rawValue)")
-            return
-        }
-
-        let element = focused as! AXUIElement
-
-        // Insert text by setting kAXSelectedTextAttribute.
-        // This replaces the current selection (or inserts at cursor
-        // if nothing is selected). Works in any text field that
-        // supports the Accessibility text protocol.
-        let setResult = AXUIElementSetAttributeValue(
-            element,
-            kAXSelectedTextAttribute as CFString,
-            text as CFTypeRef
-        )
-
-        if setResult != .success {
-            print("[VF] AX insert failed (\(setResult.rawValue)), trying value append")
-            // Fallback: try setting the full value.
-            var currentValue: AnyObject?
-            AXUIElementCopyAttributeValue(
-                element,
-                kAXValueAttribute as CFString,
-                &currentValue
-            )
-            let current = (currentValue as? String) ?? ""
-            AXUIElementSetAttributeValue(
-                element,
-                kAXValueAttribute as CFString,
-                (current + text) as CFTypeRef
-            )
-        } else {
-            print("[VF] Text inserted via Accessibility API")
+        // Type via CGEvent.
+        let src = CGEventSource(stateID: .hidSystemState)
+        for char in text {
+            let utf16 = Array(String(char).utf16)
+            if let down = CGEvent(keyboardEventSource: src, virtualKey: 0, keyDown: true) {
+                down.keyboardSetUnicodeString(stringLength: utf16.count, unicodeString: utf16)
+                down.post(tap: .cghidEventTap)
+            }
+            if let up = CGEvent(keyboardEventSource: src, virtualKey: 0, keyDown: false) {
+                up.post(tap: .cghidEventTap)
+            }
         }
     }
 
