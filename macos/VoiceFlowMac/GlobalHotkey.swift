@@ -2,35 +2,25 @@
 //  GlobalHotkey.swift
 //  VoiceFlowMac
 //
-//  Registers Cmd+Shift+D as a global hotkey to start/stop dictation
-//  from anywhere on macOS.
-//
-//  Uses NSEvent.addGlobalMonitorForEvents for key-down events. This
-//  requires the app to have Accessibility permissions granted by the
-//  user in System Settings > Privacy & Security > Accessibility.
-//
-//  Note: addGlobalMonitorForEvents only receives events when THIS app
-//  is NOT the frontmost app. For events while the app is frontmost we
-//  also install a local monitor.
+//  Double-tap Control (^) to toggle dictation.
 //
 
 import AppKit
-import Combine
 
 @MainActor
 final class GlobalHotkeyManager: ObservableObject {
 
-    /// The engine to toggle when the hotkey fires.
     weak var engine: MacDictationEngine?
+
+    @Published private(set) var isRegistered: Bool = false
+    @Published private(set) var hasAccessibilityPermission: Bool = false
 
     private var globalMonitor: Any?
     private var localMonitor: Any?
 
-    /// Whether the hotkey is currently registered.
-    @Published private(set) var isRegistered: Bool = false
-
-    /// Accessibility permission status.
-    @Published private(set) var hasAccessibilityPermission: Bool = false
+    private var lastControlPress: Date?
+    private var controlDown: Bool = false
+    private let interval: TimeInterval = 0.4
 
     init() {
         checkAccessibilityPermission()
@@ -38,31 +28,23 @@ final class GlobalHotkeyManager: ObservableObject {
     }
 
     deinit {
-        // Cannot call MainActor methods in deinit directly; just nil them out.
         if let g = globalMonitor { NSEvent.removeMonitor(g) }
         if let l = localMonitor { NSEvent.removeMonitor(l) }
     }
 
-    // MARK: - Register / Unregister
-
     func register() {
         unregister()
 
-        // Global monitor: fires when another app is frontmost
-        globalMonitor = NSEvent.addGlobalMonitorForEvents(matching: .keyDown) { [weak self] event in
-            Task { @MainActor in
-                self?.handleKeyEvent(event)
-            }
+        globalMonitor = NSEvent.addGlobalMonitorForEvents(
+            matching: [.flagsChanged, .keyDown]
+        ) { [weak self] event in
+            Task { @MainActor in self?.handle(event) }
         }
 
-        // Local monitor: fires when this app is frontmost
-        localMonitor = NSEvent.addLocalMonitorForEvents(matching: .keyDown) { [weak self] event in
-            Task { @MainActor in
-                self?.handleKeyEvent(event)
-            }
-            // Return the event so other responders still see it.
-            // If we consumed it (Cmd+Shift+D), we could return nil,
-            // but it's safer to let it pass through for menu-bar apps.
+        localMonitor = NSEvent.addLocalMonitorForEvents(
+            matching: [.flagsChanged, .keyDown]
+        ) { [weak self] event in
+            Task { @MainActor in self?.handle(event) }
             return event
         }
 
@@ -70,38 +52,33 @@ final class GlobalHotkeyManager: ObservableObject {
     }
 
     func unregister() {
-        if let g = globalMonitor {
-            NSEvent.removeMonitor(g)
-            globalMonitor = nil
-        }
-        if let l = localMonitor {
-            NSEvent.removeMonitor(l)
-            localMonitor = nil
-        }
+        if let g = globalMonitor { NSEvent.removeMonitor(g); globalMonitor = nil }
+        if let l = localMonitor { NSEvent.removeMonitor(l); localMonitor = nil }
         isRegistered = false
     }
 
-    // MARK: - Event handling
+    private func handle(_ event: NSEvent) {
+        guard event.type == .flagsChanged else { return }
 
-    private func handleKeyEvent(_ event: NSEvent) {
-        // Check for Cmd+Shift+D
-        guard event.modifierFlags.contains([.command, .shift]),
-              event.charactersIgnoringModifiers?.lowercased() == "d" else {
-            return
+        let ctrl = event.modifierFlags.contains(.control)
+        let others = event.modifierFlags.intersection([.command, .option, .shift])
+
+        if ctrl && !controlDown && others.isEmpty {
+            controlDown = true
+            let now = Date()
+            if let last = lastControlPress, now.timeIntervalSince(last) < interval {
+                lastControlPress = nil
+                engine?.toggle()
+            } else {
+                lastControlPress = now
+            }
+        } else if !ctrl {
+            controlDown = false
         }
-
-        engine?.toggle()
     }
 
-    // MARK: - Accessibility check
-
     func checkAccessibilityPermission() {
-        // Check if we have accessibility access (required for global
-        // event monitoring). This call also prompts the user the first
-        // time if the `prompt` option is true.
-        let trusted = AXIsProcessTrustedWithOptions(
-            [kAXTrustedCheckOptionPrompt.takeUnretainedValue(): true] as CFDictionary
-        )
-        hasAccessibilityPermission = trusted
+        let opts = [kAXTrustedCheckOptionPrompt.takeUnretainedValue(): true] as CFDictionary
+        hasAccessibilityPermission = AXIsProcessTrustedWithOptions(opts)
     }
 }
