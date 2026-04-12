@@ -21,13 +21,14 @@ struct VoiceFlowMacApp: App {
             MenuBarView()
                 .environmentObject(engine)
                 .task {
-                    // Wire the hotkey to the engine once the view is up.
                     hotkeyManager.engine = engine
+                    hotkeyManager.checkAccessibilityPermission()
                 }
         } label: {
-            // Use waveform (not mic) so it doesn't clash with macOS's
-            // own speech-recognition mic indicator in the menu bar.
-            Image(systemName: engine.isRecording ? "waveform.circle.fill" : "waveform")
+            // Branded "V" icon — unique to VoiceFlow, doesn't clash
+            // with macOS's mic indicator or Wispr Flow's waveform.
+            // Filled circle when recording for a clear visual toggle.
+            Image(systemName: engine.isRecording ? "v.circle.fill" : "v.circle")
         }
         .menuBarExtraStyle(.window)
     }
