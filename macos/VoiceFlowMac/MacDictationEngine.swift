@@ -216,9 +216,6 @@ final class MacDictationEngine: ObservableObject {
                     self.liveTranscript = self.finalizedText.isEmpty
                         ? partial
                         : self.finalizedText + " " + partial
-
-                    // Type the new text directly into the active app.
-                    self.typeIncrementalUpdate()
                 }
 
                 if let error {
@@ -352,126 +349,35 @@ final class MacDictationEngine: ObservableObject {
         do {
             let cleaned = try await ClaudeCleanup.shared.clean(request)
             polishedTranscript = cleaned
-
-            // Select the raw text we typed into the active app and
-            // replace it with the cleaned version.
-            replaceTypedTextInActiveApp(with: cleaned)
+            copyAndPaste(cleaned)
         } catch {
             errorMessage = "Cleanup failed: \(error.localizedDescription)"
             polishedTranscript = rawTranscript
+            copyAndPaste(rawTranscript)
         }
     }
 
-    // MARK: - Live text insertion into active app
+    // MARK: - Paste into active app
 
-    /// Track how many characters we've typed into the active app
-    /// so we know how much to select-all-and-replace after cleanup.
-    private var typedCharacterCount: Int = 0
-
-    /// Previous live transcript — used to compute the diff so we
-    /// only type NEW characters, not re-type the whole thing.
-    private var previousLiveTranscript: String = ""
-
-    /// Called on every partial recognition result to type the new
-    /// characters into the active app's text field.
-    func typeIncrementalUpdate() {
-        let current = liveTranscript
-        let previous = previousLiveTranscript
-
-        // SFSpeechRecognizer's partial results can revise earlier
-        // words. When that happens, we need to delete what we typed
-        // and re-type the full transcript. Detect this by checking
-        // if the current result still starts with what we already
-        // typed.
-        if current.hasPrefix(previous) {
-            // Append only the new suffix.
-            let newPart = String(current.dropFirst(previous.count))
-            if !newPart.isEmpty {
-                simulateTyping(newPart)
-                typedCharacterCount += newPart.count
-            }
-        } else {
-            // The recognizer revised earlier words. Delete what we
-            // typed and re-type the full transcript.
-            deleteTypedCharacters(typedCharacterCount)
-            simulateTyping(current)
-            typedCharacterCount = current.count
-        }
-
-        previousLiveTranscript = current
-    }
-
-    /// After cleanup, select the raw text we typed and replace
-    /// with the cleaned version.
-    private func replaceTypedTextInActiveApp(with cleaned: String) {
-        guard typedCharacterCount > 0 else {
-            // Nothing was typed — just paste.
-            pasteText(cleaned)
-            return
-        }
-
-        // Delete the raw text we typed character by character.
-        deleteTypedCharacters(typedCharacterCount)
-
-        // Type the cleaned text.
-        simulateTyping(cleaned)
-
-        typedCharacterCount = 0
-        previousLiveTranscript = ""
-    }
-
-    /// Simulate pressing Backspace N times to delete typed chars.
-    private func deleteTypedCharacters(_ count: Int) {
-        for _ in 0..<count {
-            simulateKeyPress(keyCode: 51, flags: []) // 51 = Delete/Backspace
-        }
-    }
-
-    /// Paste text via clipboard + Cmd+V (for long text, faster
-    /// than simulating individual keystrokes).
-    private func pasteText(_ text: String) {
+    /// Copy text to clipboard, then paste into the frontmost app
+    /// via AppleScript. No Accessibility permissions needed.
+    private func copyAndPaste(_ text: String) {
         let pasteboard = NSPasteboard.general
         pasteboard.clearContents()
         pasteboard.setString(text, forType: .string)
-        // Small delay so pasteboard is ready.
-        DispatchQueue.main.asyncAfter(deadline: .now() + 0.05) {
-            self.simulateKeyPress(keyCode: 9, flags: .maskCommand) // Cmd+V
+
+        // Simulate Cmd+V via AppleScript — works without
+        // Accessibility permissions.
+        let script = NSAppleScript(source: """
+            tell application "System Events"
+                keystroke "v" using command down
+            end tell
+        """)
+        DispatchQueue.main.asyncAfter(deadline: .now() + 0.1) {
+            var error: NSDictionary?
+            script?.executeAndReturnError(&error)
         }
     }
-
-    /// Simulate typing a string by inserting it via the CGEvent
-    /// text-input API.
-    private func simulateTyping(_ text: String) {
-        // Use CGEvent's keyboard text input. For each chunk, create
-        // a keyDown event with the characters set.
-        let source = CGEventSource(stateID: .hidSystemState)
-
-        for char in text {
-            let str = String(char)
-            let event = CGEvent(keyboardEventSource: source, virtualKey: 0, keyDown: true)
-            let utf16 = Array(str.utf16)
-            event?.keyboardSetUnicodeString(stringLength: utf16.count, unicodeString: utf16)
-            event?.post(tap: .cghidEventTap)
-
-            // Key up
-            let upEvent = CGEvent(keyboardEventSource: source, virtualKey: 0, keyDown: false)
-            upEvent?.post(tap: .cghidEventTap)
-        }
-    }
-
-    /// Simulate a single key press (e.g. Backspace, Cmd+V).
-    private func simulateKeyPress(keyCode: CGKeyCode, flags: CGEventFlags) {
-        let source = CGEventSource(stateID: .hidSystemState)
-        let keyDown = CGEvent(keyboardEventSource: source, virtualKey: keyCode, keyDown: true)
-        keyDown?.flags = flags
-        keyDown?.post(tap: .cghidEventTap)
-
-        let keyUp = CGEvent(keyboardEventSource: source, virtualKey: keyCode, keyDown: false)
-        keyUp?.flags = flags
-        keyUp?.post(tap: .cghidEventTap)
-    }
-
-    // MARK: - Clipboard (legacy, kept for manual copy)
 
     func copyToClipboard(_ text: String) {
         let pasteboard = NSPasteboard.general
