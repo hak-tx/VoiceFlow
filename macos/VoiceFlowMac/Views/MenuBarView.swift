@@ -205,12 +205,6 @@ struct MenuBarView: View {
 
     private var transcriptArea: some View {
         VStack(alignment: .leading, spacing: 6) {
-            if engine.isRecording {
-                WaveformBar(level: engine.audioLevel)
-                    .frame(height: 16)
-                    .padding(.horizontal, 14)
-            }
-
             if engine.visibleTranscript.isEmpty && !engine.isRecording && !engine.isPolishing {
                 VStack(spacing: 8) {
                     Text("Press ⌃⌃ (Control twice) to start dictating.")
