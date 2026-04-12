@@ -231,11 +231,6 @@ final class MacDictationEngine: ObservableObject {
     private func rotateRecognitionSession() {
         guard isRecording else { return }
 
-        // Finalize current segment
-        if let currentTranscript = recognitionTask?.isFinishing == false ? nil : nil {
-            _ = currentTranscript // never reached, just for clarity
-        }
-
         // Capture whatever we have so far
         let currentLive = liveTranscript
         finalizedText = currentLive
