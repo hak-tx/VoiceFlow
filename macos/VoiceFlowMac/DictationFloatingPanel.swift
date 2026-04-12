@@ -154,7 +154,8 @@ private struct DictationPanelContentView: View {
             }
         }
         .padding(16)
-        .frame(width: 320, minHeight: 200)
+        .frame(width: 320)
+        .frame(minHeight: 200)
     }
 
     private var statusText: String {
