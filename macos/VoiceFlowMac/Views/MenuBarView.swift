@@ -37,10 +37,6 @@ struct MenuBarView: View {
             Divider()
             toneRow
             Divider()
-            transcriptArea
-            Divider()
-            actionBar
-            Divider()
             footerControls
         }
         .frame(width: 380)
@@ -202,126 +198,6 @@ struct MenuBarView: View {
         .buttonStyle(.plain)
     }
 
-    // MARK: - Transcript
-
-    private var transcriptArea: some View {
-        VStack(alignment: .leading, spacing: 6) {
-            if engine.visibleTranscript.isEmpty && !engine.isRecording && !engine.isPolishing {
-                VStack(spacing: 8) {
-                    Text("Press ⌃⌃ (Control twice) to start dictating.")
-                        .font(.system(size: 12))
-                        .foregroundStyle(.tertiary)
-                    Text("Text appears here and inserts at your cursor.")
-                        .font(.system(size: 11))
-                        .foregroundStyle(.quaternary)
-                }
-                .multilineTextAlignment(.center)
-                .frame(maxWidth: .infinity)
-                .padding(.vertical, 20)
-            } else {
-                ScrollView {
-                    Text(engine.visibleTranscript.isEmpty ? "Listening..." : engine.visibleTranscript)
-                        .font(.system(size: 12))
-                        .foregroundStyle(engine.visibleTranscript.isEmpty ? .tertiary : .primary)
-                        .italic(engine.visibleTranscript.isEmpty)
-                        .frame(maxWidth: .infinity, alignment: .leading)
-                        .textSelection(.enabled)
-                }
-                .frame(maxHeight: 200)
-                .padding(.horizontal, 14)
-
-                if engine.isPolishing {
-                    HStack(spacing: 6) {
-                        ProgressView()
-                            .scaleEffect(0.6)
-                        Text("Cleaning up with Claude...")
-                            .font(.system(size: 11))
-                            .foregroundStyle(.secondary)
-                    }
-                    .padding(.horizontal, 14)
-                }
-
-                // Status message (e.g., "Copied to clipboard")
-                if let status = coordinator.statusMessage {
-                    HStack(spacing: 4) {
-                        Image(systemName: "checkmark.circle.fill")
-                            .foregroundStyle(.green)
-                        Text(status)
-                            .font(.system(size: 11, weight: .medium))
-                    }
-                    .padding(.horizontal, 14)
-                }
-
-                // Error + retry
-                if let error = coordinator.lastPolishError {
-                    VStack(spacing: 4) {
-                        Text(error)
-                            .font(.system(size: 10))
-                            .foregroundStyle(.red)
-                        Button("Retry Cleanup") {
-                            Task { await coordinator.retryPolish() }
-                        }
-                        .controlSize(.small)
-                    }
-                    .padding(.horizontal, 14)
-                }
-            }
-        }
-        .padding(.vertical, 8)
-    }
-
-    // MARK: - Actions
-
-    private var actionBar: some View {
-        HStack(spacing: 6) {
-            MenuActionButton(title: "Copy", systemImage: "doc.on.doc") {
-                let text = engine.visibleTranscript
-                guard !text.isEmpty else { return }
-                NSPasteboard.general.clearContents()
-                NSPasteboard.general.setString(text, forType: .string)
-            }
-            .disabled(engine.visibleTranscript.isEmpty)
-
-            MenuActionButton(title: "Clear", systemImage: "xmark.circle") {
-                engine.clearBuffers()
-                coordinator.lastPolishError = nil
-            }
-            .disabled(engine.visibleTranscript.isEmpty)
-
-            MenuActionButton(title: "Undo", systemImage: "arrow.uturn.backward") {
-                engine.revertToRaw()
-            }
-            .disabled(engine.polishedTranscript.isEmpty || engine.isRecording)
-
-            MenuActionButton(title: "Redo", systemImage: "arrow.uturn.forward") {
-                engine.redoPolish()
-            }
-            .disabled(!engine.polishedTranscript.isEmpty || engine.cachedPolishedTranscript.isEmpty)
-
-            Spacer()
-
-            // Start/stop dictation. Transcript shows here in the
-            // popover, cleaned text auto-copies to clipboard.
-            Button {
-                Task {
-                    if engine.isRecording {
-                        await coordinator.stopFromPopover()
-                    } else {
-                        await coordinator.startFromPopover()
-                    }
-                }
-            } label: {
-                Image(systemName: engine.isRecording ? "stop.circle.fill" : "mic.circle.fill")
-                    .font(.system(size: 24))
-                    .foregroundStyle(engine.isRecording ? Color.red : Color.accentColor)
-            }
-            .buttonStyle(.plain)
-            .help(engine.isRecording ? "Stop dictation" : "Start dictation")
-        }
-        .padding(.horizontal, 14)
-        .padding(.vertical, 8)
-    }
-
     // MARK: - Footer
 
     private var footerControls: some View {
@@ -392,28 +268,3 @@ struct MenuBarView: View {
     }
 }
 
-// MARK: - MenuActionButton
-
-private struct MenuActionButton: View {
-    let title: String
-    let systemImage: String
-    let action: () -> Void
-
-    var body: some View {
-        Button(action: action) {
-            VStack(spacing: 1) {
-                Image(systemName: systemImage)
-                    .font(.system(size: 12, weight: .medium))
-                Text(title)
-                    .font(.system(size: 9, weight: .medium))
-            }
-            .foregroundStyle(.primary)
-            .frame(width: 44, height: 36)
-            .background(
-                RoundedRectangle(cornerRadius: 6, style: .continuous)
-                    .fill(Color.secondary.opacity(0.1))
-            )
-        }
-        .buttonStyle(.plain)
-    }
-}
