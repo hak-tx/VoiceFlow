@@ -438,12 +438,10 @@ final class DictationEngine: ObservableObject {
         isPolishing = true
         defer { isPolishing = false }
 
-        let model: ClaudeCleanup.Model = {
-            guard let entitlements, entitlements.hasPro, proPolishEnabled else {
-                return .haiku
-            }
-            return .sonnet
-        }()
+        // Per product decision: always use Haiku in-app. Sonnet path is
+        // intentionally disabled — Haiku is fast and the new secret-sauce
+        // prompt does the heavy lifting.
+        let model: ClaudeCleanup.Model = .haiku
 
         let request = ClaudeCleanup.Request(
             rawTranscript: raw,
