@@ -112,4 +112,121 @@ platform :ios do
       xcargs: "-allowProvisioningUpdates DEVELOPMENT_TEAM=#{ENV.fetch('VOICEFLOW_TEAM_ID')}"
     )
   end
+
+  desc "One-time: add the VoiceFlowKeyboard Custom Keyboard Extension target to the Xcode project"
+  lane :add_keyboard do
+    require 'xcodeproj'
+    require 'fileutils'
+
+    project_path = PROJECT
+    pbxproj_path = "#{project_path}/project.pbxproj"
+    backup_path  = "#{pbxproj_path}.backup"
+
+    FileUtils.cp(pbxproj_path, backup_path)
+    UI.message "Backed up pbxproj to #{backup_path}"
+
+    begin
+      project = Xcodeproj::Project.open(project_path)
+
+      if project.targets.any? { |t| t.name == 'VoiceFlowKeyboard' }
+        UI.important "VoiceFlowKeyboard target already exists — nothing to do."
+        next
+      end
+
+      main_target = project.targets.find { |t| t.name == 'VoiceFlow' }
+      UI.user_error!("main 'VoiceFlow' target not found") unless main_target
+
+      # 1. Create the keyboard extension target.
+      kb_target = project.new_target(
+        :app_extension,
+        'VoiceFlowKeyboard',
+        :ios,
+        '17.0'
+      )
+
+      team_id = ENV.fetch('VOICEFLOW_TEAM_ID', '')
+
+      kb_target.build_configurations.each do |config|
+        bs = config.build_settings
+        bs['PRODUCT_BUNDLE_IDENTIFIER']          = 'com.hak-tx.voiceflow.keyboard'
+        bs['PRODUCT_NAME']                       = 'VoiceFlowKeyboard'
+        bs['INFOPLIST_FILE']                     = 'VoiceFlowKeyboard/Info.plist'
+        bs['CODE_SIGN_ENTITLEMENTS']             = 'VoiceFlowKeyboard/VoiceFlowKeyboard.entitlements'
+        bs['CODE_SIGN_STYLE']                    = 'Automatic'
+        bs['DEVELOPMENT_TEAM']                   = team_id unless team_id.empty?
+        bs['SWIFT_VERSION']                      = '5.0'
+        bs['IPHONEOS_DEPLOYMENT_TARGET']         = '17.0'
+        bs['TARGETED_DEVICE_FAMILY']             = '1,2'
+        bs['MARKETING_VERSION']                  = '1.0.0'
+        bs['CURRENT_PROJECT_VERSION']            = '1'
+        bs['GENERATE_INFOPLIST_FILE']            = 'NO'
+        bs['SKIP_INSTALL']                       = 'NO'
+        bs['ALWAYS_EMBED_SWIFT_STANDARD_LIBRARIES'] = 'YES'
+        bs['LD_RUNPATH_SEARCH_PATHS']            = '$(inherited) @executable_path/Frameworks @executable_path/../../Frameworks'
+      end
+
+      # 2. Add the keyboard source files into a group + the target's
+      #    compile-sources build phase.
+      kb_group = project.main_group['VoiceFlowKeyboard']
+      kb_group ||= project.main_group.new_group(
+        'VoiceFlowKeyboard',
+        'VoiceFlowKeyboard'
+      )
+
+      keyboard_sources = %w[
+        KeyboardViewController.swift
+        VoiceFlowKeyboardEngine.swift
+        KeyboardRootView.swift
+      ]
+      keyboard_sources.each do |filename|
+        existing = kb_group.files.find { |f| f.path == filename }
+        file_ref = existing || kb_group.new_file(filename)
+        kb_target.source_build_phase.add_file_reference(file_ref, true)
+      end
+
+      # 3. Add shared main-app files to the keyboard target's build
+      #    membership so ClaudeCleanup + Secrets + TonePreset compile
+      #    into the extension too.
+      shared_relative_paths = [
+        'VoiceFlow/Secrets.swift',
+        'VoiceFlow/Core/ClaudeCleanup.swift',
+        'VoiceFlow/Models/TonePreset.swift',
+      ]
+      shared_relative_paths.each do |rel|
+        ref = project.files.find { |f| f.real_path.to_s.end_with?(rel) }
+        if ref.nil?
+          UI.important "Couldn't find shared file for #{rel} — skipping. You may need to target-membership it manually."
+          next
+        end
+        already = kb_target.source_build_phase.files_references.any? { |r| r == ref }
+        kb_target.source_build_phase.add_file_reference(ref, true) unless already
+      end
+
+      # 4. Embed the extension in the main app's Copy Files phase.
+      main_target.add_dependency(kb_target)
+
+      embed_phase = main_target.copy_files_build_phases.find { |p| p.name == 'Embed App Extensions' }
+      if embed_phase.nil?
+        embed_phase = main_target.new_copy_files_build_phase('Embed App Extensions')
+        embed_phase.symbol_dst_subfolder_spec = :plug_ins
+      end
+
+      unless embed_phase.files.any? { |f| f.display_name == 'VoiceFlowKeyboard.appex' }
+        bf = embed_phase.add_file_reference(kb_target.product_reference)
+        bf.settings = { 'ATTRIBUTES' => ['RemoveHeadersOnCopy'] }
+      end
+
+      project.save
+
+      UI.success "✓ Added VoiceFlowKeyboard target to Xcode project."
+      UI.message "Next: run 'fastlane beta' to ship a build with the keyboard."
+      UI.message "Backup kept at #{backup_path} — delete it once you've verified the build works."
+    rescue => e
+      UI.error "Script failed: #{e.class}: #{e.message}"
+      UI.error e.backtrace.first(10).join("\n")
+      FileUtils.cp(backup_path, pbxproj_path)
+      UI.error "Restored pbxproj from backup. Project unchanged."
+      raise
+    end
+  end
 end
