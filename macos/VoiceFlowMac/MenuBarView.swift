@@ -40,6 +40,11 @@ struct MenuBarView: View {
             // Start / Stop
             Button(action: {
                 engine.toggle()
+                // Return focus to the previous app so CGEvents
+                // (live typing) go to the user's cursor, not here.
+                DispatchQueue.main.asyncAfter(deadline: .now() + 0.1) {
+                    NSApp.hide(nil)
+                }
             }) {
                 HStack {
                     Image(systemName: engine.isRecording
@@ -94,37 +99,11 @@ struct MenuBarView: View {
                 }
             }
 
-            // Last result preview
-            if !engine.polishedTranscript.isEmpty {
-                VStack(alignment: .leading, spacing: 4) {
-                    Text("Copied to clipboard:")
-                        .font(.caption2)
-                        .foregroundColor(.secondary)
-                    Text(engine.polishedTranscript.prefix(200) +
-                         (engine.polishedTranscript.count > 200 ? "..." : ""))
-                        .font(.caption)
-                        .lineLimit(4)
-                        .textSelection(.enabled)
-                }
-                .padding(8)
-                .background(Color(nsColor: .controlBackgroundColor))
-                .cornerRadius(6)
-            }
-
-            // Live transcript while recording
-            if engine.isRecording && !engine.liveTranscript.isEmpty {
-                VStack(alignment: .leading, spacing: 4) {
-                    Text("Listening:")
-                        .font(.caption2)
-                        .foregroundColor(.secondary)
-                    Text(engine.liveTranscript.suffix(150))
-                        .font(.caption)
-                        .lineLimit(3)
-                        .foregroundColor(.primary)
-                }
-                .padding(8)
-                .background(Color(nsColor: .controlBackgroundColor))
-                .cornerRadius(6)
+            // Status
+            if engine.isRecording {
+                Text("Recording — text appears at your cursor")
+                    .font(.caption)
+                    .foregroundColor(.secondary)
             }
 
             // Error display
