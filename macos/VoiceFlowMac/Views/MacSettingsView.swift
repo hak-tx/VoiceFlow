@@ -245,7 +245,7 @@ struct PermissionsSettingsTab: View {
                         // Opens System Settings → Privacy & Security →
                         // Accessibility with VoiceFlow highlighted.
                         let _ = AXIsProcessTrustedWithOptions(
-                            [kAXTrustedCheckOptionPrompt: true] as CFDictionary
+                            [kAXTrustedCheckOptionPrompt as String: true] as CFDictionary
                         )
                     }
                 )
@@ -297,7 +297,7 @@ struct PermissionsSettingsTab: View {
 
     private func checkPermissions() {
         accessibilityGranted = AXIsProcessTrustedWithOptions(
-            [kAXTrustedCheckOptionPrompt: false] as CFDictionary
+            [kAXTrustedCheckOptionPrompt as String: false] as CFDictionary
         )
 
         if #available(macOS 14.0, *) {
@@ -366,7 +366,7 @@ struct AboutSettingsTab: View {
             HStack(spacing: 16) {
                 Image(systemName: "waveform.circle.fill")
                     .font(.system(size: 48))
-                    .foregroundStyle(.accentColor)
+                    .foregroundStyle(Color.accentColor)
 
                 VStack(alignment: .leading, spacing: 2) {
                     Text("VoiceFlow for Mac")
