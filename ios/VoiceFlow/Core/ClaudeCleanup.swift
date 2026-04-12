@@ -165,14 +165,28 @@ struct ClaudeCleanup {
         parts.append("Active tone preset: \(tone.title).\n\n" + tone.systemPromptFragment)
 
         if let hints = packPromptHints, !hints.isEmpty {
-            parts.append("Speaker's domain context: " + hints)
+            parts.append(
+                "The speaker works across multiple professional domains " +
+                "and has activated the following industry vocabulary packs. " +
+                "For EACH dictation, identify which domain(s) are most " +
+                "relevant based on the actual content of the transcript, " +
+                "then apply the corresponding vocabulary rules and domain " +
+                "conventions. If a dictation mixes domains (e.g. a medical " +
+                "professional writing code for an EHR system), apply both " +
+                "sets of rules simultaneously — they are additive, not " +
+                "conflicting.\n\n" +
+                "Active domain context:\n" + hints
+            )
         }
         if let terms = packTermsBlock, !terms.isEmpty {
             parts.append(
-                "Domain vocabulary — these terms and phrases are SACRED. " +
-                "If the raw transcript contains any of these, assume it's " +
-                "correct and preserve exact spelling, capitalization, and " +
-                "punctuation. Do not 'fix' them into non-domain words.\n" +
+                "Domain vocabulary (merged from all active packs) — these " +
+                "terms and phrases are SACRED regardless of which domain " +
+                "this particular dictation belongs to. If the raw " +
+                "transcript contains any of these, assume the speaker " +
+                "said it correctly and preserve exact spelling, " +
+                "capitalization, and punctuation. Do NOT 'fix' them into " +
+                "non-domain words or common English substitutes.\n" +
                 terms
             )
         }
