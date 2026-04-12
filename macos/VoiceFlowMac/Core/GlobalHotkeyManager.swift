@@ -59,6 +59,12 @@ final class GlobalHotkeyManager: ObservableObject {
     /// Weak reference for the C callback to call back into Swift.
     private nonisolated(unsafe) static var instance: GlobalHotkeyManager?
 
+    /// Timer that periodically re-checks Accessibility permission so
+    /// the UI updates when the user grants access in System Settings
+    /// (there's no system callback for this — polling is the standard
+    /// approach used by Alfred, Raycast, etc.).
+    private var permissionPollTimer: Timer?
+
     // MARK: - Init
 
     override init() {
@@ -66,6 +72,7 @@ final class GlobalHotkeyManager: ObservableObject {
         Self.shared = self
         Self.instance = self
         checkAccessibilityPermission()
+        startPermissionPolling()
     }
 
     // MARK: - Public API
@@ -136,6 +143,8 @@ final class GlobalHotkeyManager: ObservableObject {
 
     /// Remove the event tap and clean up.
     func teardown() {
+        permissionPollTimer?.invalidate()
+        permissionPollTimer = nil
         if let tap = eventTap {
             CGEvent.tapEnable(tap: tap, enable: false)
         }
@@ -155,14 +164,37 @@ final class GlobalHotkeyManager: ObservableObject {
         hasAccessibilityPermission = trusted
     }
 
-    /// Prompt the user for Accessibility permission.
+    /// Prompt the user for Accessibility permission. Opens the
+    /// System Settings → Privacy & Security → Accessibility pane
+    /// with VoiceFlow highlighted. Permission persists permanently
+    /// once granted (survives reboots, app updates via the same
+    /// bundle ID). The polling timer detects when it's granted.
     func requestAccessibilityPermission() {
         let _ = AXIsProcessTrustedWithOptions(
             [kAXTrustedCheckOptionPrompt: true] as CFDictionary
         )
-        // Re-check after a short delay (the dialog is async).
-        DispatchQueue.main.asyncAfter(deadline: .now() + 1.0) { [weak self] in
-            self?.checkAccessibilityPermission()
+    }
+
+    /// Poll every 2 seconds to detect when Accessibility permission
+    /// is granted. macOS has no callback/notification for this — every
+    /// real productivity app (Alfred, Raycast, Bartender) polls.
+    /// When permission flips from false→true, auto-install the event
+    /// tap so the user doesn't need to restart.
+    private func startPermissionPolling() {
+        permissionPollTimer?.invalidate()
+        permissionPollTimer = Timer.scheduledTimer(
+            withTimeInterval: 2.0,
+            repeats: true
+        ) { [weak self] _ in
+            Task { @MainActor [weak self] in
+                guard let self else { return }
+                let wasTrusted = self.hasAccessibilityPermission
+                self.checkAccessibilityPermission()
+                // Auto-install the event tap when permission is newly granted.
+                if !wasTrusted && self.hasAccessibilityPermission {
+                    self.install()
+                }
+            }
         }
     }
 

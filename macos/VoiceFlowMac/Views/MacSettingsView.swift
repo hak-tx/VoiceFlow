@@ -226,14 +226,21 @@ struct PermissionsSettingsTab: View {
     @State private var microphoneGranted = false
     @State private var speechGranted = false
 
+    /// Timer to re-check permissions while this tab is visible.
+    /// macOS has no notification when the user toggles a permission
+    /// in System Settings, so we poll (same as Alfred, Raycast, etc.).
+    let permissionTimer = Timer.publish(every: 2, on: .main, in: .common).autoconnect()
+
     var body: some View {
         Form {
             Section {
                 PermissionRow(
                     title: "Accessibility",
-                    description: "Required for the global ⌃⌃ hotkey and inserting text at your cursor.",
+                    description: "Required for the global ⌃⌃ hotkey and inserting text at your cursor. This permission is permanent once granted — it persists across reboots and app updates.",
                     granted: accessibilityGranted,
                     action: {
+                        // Opens System Settings → Privacy & Security →
+                        // Accessibility with VoiceFlow highlighted.
                         let _ = AXIsProcessTrustedWithOptions(
                             [kAXTrustedCheckOptionPrompt: true] as CFDictionary
                         )
@@ -242,37 +249,45 @@ struct PermissionsSettingsTab: View {
 
                 PermissionRow(
                     title: "Microphone",
-                    description: "Required to capture your voice for dictation.",
+                    description: "Required to capture your voice for dictation. Granted via the standard macOS permission dialog.",
                     granted: microphoneGranted,
                     action: {
-                        // Triggers the system permission dialog.
                         Task {
                             if #available(macOS 14.0, *) {
                                 _ = await AVAudioApplication.requestRecordPermission()
                             }
+                            checkPermissions()
                         }
                     }
                 )
 
                 PermissionRow(
                     title: "Speech Recognition",
-                    description: "Required to transcribe your speech in real time.",
+                    description: "Required to transcribe your speech in real time. Uses on-device Apple Speech Recognition.",
                     granted: speechGranted,
                     action: {
-                        SFSpeechRecognizer.requestAuthorization { _ in }
+                        SFSpeechRecognizer.requestAuthorization { _ in
+                            DispatchQueue.main.async { checkPermissions() }
+                        }
                     }
                 )
             } header: {
                 Text("Required Permissions")
             } footer: {
-                Text("All processing is local except the Claude API call for text cleanup. No audio leaves your Mac.")
-                    .font(.caption)
-                    .foregroundStyle(.tertiary)
+                VStack(alignment: .leading, spacing: 4) {
+                    Text("All speech recognition runs locally on your Mac. Only the final transcript text is sent to the Claude API for cleanup — no audio ever leaves your device.")
+                    Text("Permissions are stored by macOS and persist permanently. You can revoke them at any time in System Settings → Privacy & Security.")
+                }
+                .font(.caption)
+                .foregroundStyle(.tertiary)
             }
         }
         .formStyle(.grouped)
         .padding()
         .onAppear {
+            checkPermissions()
+        }
+        .onReceive(permissionTimer) { _ in
             checkPermissions()
         }
     }

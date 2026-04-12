@@ -10,7 +10,6 @@
 //
 
 import SwiftUI
-import Combine
 
 @main
 struct VoiceFlowMacApp: App {
@@ -53,41 +52,28 @@ struct VoiceFlowMacApp: App {
         }
     }
 
-    init() {
-        // Hide Dock icon — menu-bar-only app.
-        NSApplication.shared.setActivationPolicy(.accessory)
-    }
+    // Dock icon is hidden by LSUIElement=true in Info.plist.
+    // Do NOT call NSApplication.shared.setActivationPolicy here —
+    // NSApplication.shared isn't ready during App struct init and
+    // it would crash on launch. LSUIElement is the correct, persistent
+    // way to make a menu-bar-only app.
 }
 
 // MARK: - AppDelegate
 
-/// Bridges AppKit lifecycle events into our SwiftUI app. Primarily
-/// used to wire up the global hotkey listener and manage the overlay
-/// panel lifecycle.
+/// Bridges AppKit lifecycle events. Handles cleanup on termination.
+/// Dependency wiring happens in MenuBarView.onAppear since AppDelegate
+/// can't access @StateObject properties from the App struct.
 final class AppDelegate: NSObject, NSApplicationDelegate {
 
-    private var cancellables = Set<AnyCancellable>()
-
     func applicationDidFinishLaunching(_ notification: Notification) {
-        // Hide from Dock (belt-and-suspenders with the init above).
-        NSApp.setActivationPolicy(.accessory)
-
-        // Wire dependencies after SwiftUI state objects are live.
-        // We use a tiny delay to let @StateObject init complete.
-        DispatchQueue.main.asyncAfter(deadline: .now() + 0.1) {
-            self.wireDependencies()
-        }
-    }
-
-    private func wireDependencies() {
-        // Access the shared instances through the SwiftUI app structure.
-        // Since AppDelegate can't directly access @StateObject, we use
-        // notification-based wiring — the actual wiring happens in the
-        // MenuBarView's .onAppear.
+        // LSUIElement=true in Info.plist already hides the Dock icon.
+        // No programmatic setActivationPolicy needed — that's a temp
+        // flag that doesn't persist and is the wrong approach.
     }
 
     func applicationWillTerminate(_ notification: Notification) {
-        // Clean up the global event tap.
+        // Tear down the CGEvent tap so it doesn't leak across restarts.
         GlobalHotkeyManager.shared?.teardown()
     }
 }
