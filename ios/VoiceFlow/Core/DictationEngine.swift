@@ -179,8 +179,15 @@ final class DictationEngine: ObservableObject {
     /// QuickDictateView).
     func start(withSilenceAutoStop: Bool = false) async {
         self.silenceDetectionEnabled = withSilenceAutoStop
-        self.replaceBase = nil
-        self.replaceRange = nil
+        // NOTE: Do NOT clear replaceBase/replaceRange here. They are
+        // only cleared by polish() on success/error and clearBuffers().
+        // Clearing them here was causing the splice to fail when the
+        // user tapped Re-dictate and a race between start/stop
+        // clobbered the splice context.
+        if !isReplacingSelection {
+            self.replaceBase = nil
+            self.replaceRange = nil
+        }
         await startInternal()
     }
 
@@ -296,6 +303,9 @@ final class DictationEngine: ObservableObject {
         polishedTranscript = ""
         cachedPolishedTranscript = ""
         stitchedSegments.removeAll()
+        replaceBase = nil
+        replaceRange = nil
+        isReplacingSelection = false
     }
 
     /// Append a paragraph break to the live transcript. Used by the
