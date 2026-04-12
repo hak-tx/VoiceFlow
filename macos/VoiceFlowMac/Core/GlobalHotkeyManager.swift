@@ -67,8 +67,7 @@ final class GlobalHotkeyManager: ObservableObject {
 
     // MARK: - Init
 
-    override init() {
-        super.init()
+    init() {
         Self.shared = self
         Self.instance = self
         checkAccessibilityPermission()

@@ -13,6 +13,9 @@
 //
 
 import SwiftUI
+import Speech
+import AVFoundation
+import Combine
 
 struct MacSettingsView: View {
     var body: some View {
@@ -312,9 +315,6 @@ struct PermissionsSettingsTab: View {
         }
     }
 }
-
-import Speech
-import AVFoundation
 
 private struct PermissionRow: View {
     let title: String
