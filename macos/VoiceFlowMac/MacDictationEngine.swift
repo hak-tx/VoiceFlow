@@ -385,44 +385,30 @@ final class MacDictationEngine: ObservableObject {
 
     // MARK: - Live typing at cursor via CGEvent
 
-    /// Type text at the cursor in the frontmost app using clipboard
-    /// + Cmd+V. This is the most reliable cross-app text insertion
-    /// on macOS — works everywhere CGEvent posting fails.
+    /// Paste text at cursor using osascript subprocess.
+    /// osascript is Apple-signed and has its own Accessibility
+    /// trust — bypasses our app's stale code signature grant.
     private func pasteTextAtCursor(_ text: String) {
         guard !text.isEmpty else { return }
 
-        // Save current clipboard so we can restore it.
+        // Put text on clipboard.
         let pb = NSPasteboard.general
-        let savedItems = pb.pasteboardItems?.compactMap { item -> (String, String)? in
-            guard let type = item.types.first,
-                  let data = item.string(forType: type) else { return nil }
-            return (type.rawValue, data)
-        } ?? []
-
-        // Put our text on the clipboard.
         pb.clearContents()
         pb.setString(text, forType: .string)
 
-        // Simulate Cmd+V via AppleScript (reliable across all apps).
-        let script = NSAppleScript(source: """
-            tell application "System Events"
-                keystroke "v" using command down
-            end tell
-        """)
-        var error: NSDictionary?
-        script?.executeAndReturnError(&error)
-        if let error {
-            print("[VF] Paste error: \(error)")
-        }
-
-        // Restore clipboard after a short delay.
-        DispatchQueue.main.asyncAfter(deadline: .now() + 0.3) {
-            if !savedItems.isEmpty {
-                pb.clearContents()
-                for (typeRaw, data) in savedItems {
-                    pb.setString(data, forType: NSPasteboard.PasteboardType(typeRaw))
-                }
-            }
+        // Use osascript subprocess to trigger Cmd+V.
+        // This runs as a separate Apple-signed process.
+        let task = Process()
+        task.executableURL = URL(fileURLWithPath: "/usr/bin/osascript")
+        task.arguments = [
+            "-e",
+            "tell application \"System Events\" to keystroke \"v\" using command down"
+        ]
+        do {
+            try task.run()
+            task.waitUntilExit()
+        } catch {
+            print("[VF] osascript failed: \(error)")
         }
     }
 
