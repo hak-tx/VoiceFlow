@@ -39,7 +39,7 @@ struct MenuBarView: View {
 
             // Start / Stop
             Button(action: {
-                Task { await engine.toggle() }
+                engine.toggle()
             }) {
                 HStack {
                     Image(systemName: engine.isRecording
@@ -146,18 +146,8 @@ struct MenuBarView: View {
         .padding(12)
         .frame(width: 280)
         .onAppear {
-            // Wire the hotkey to the engine's toggle.
-            hotkey.onDoubleTap = {
-                Task { @MainActor in
-                    await engine.toggle()
-                }
-            }
-            // Wire silence auto-stop.
-            engine.onSilenceDetected = {
-                Task { @MainActor in
-                    await engine.stop()
-                }
-            }
+            hotkey.onDoubleTap = { engine.toggle() }
+            engine.onSilenceDetected = { engine.stop() }
         }
     }
 }

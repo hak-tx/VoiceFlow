@@ -2,16 +2,18 @@
 //  MacDictationEngine.swift
 //  VoiceFlowMac
 //
-//  macOS adaptation of the iOS DictationEngine. Uses
-//  SFSpeechRecognizer + AVAudioEngine for mic capture.
+//  macOS-specific dictation engine using SFSpeechRecognizer + AVAudioEngine.
 //
-//  Key differences from iOS:
-//  - No AVAudioSession (macOS does not have it).
-//  - AVAudioEngine.inputNode works directly without session config.
-//  - After dictation stops, result is cleaned via ClaudeCleanup
-//    then copied to the system clipboard.
+//  Key differences from the iOS DictationEngine:
+//   - NO AVAudioSession (iOS-only). Audio input is configured directly
+//     via AVAudioEngine.inputNode on macOS.
+//   - Auto-clipboard: after cleanup, polished text goes to NSPasteboard
+//     automatically.
+//   - Simplified for menu-bar utility: no Pro Polish, no vocab packs
+//     in v1, no splice context.
 //
-//  Same 55-second session rotation and silence detection as iOS.
+//  Handles Apple's ~1-minute per-request limit by rotating recognition
+//  sessions every ~55 seconds and stitching finalized segments.
 //
 
 import Foundation
@@ -25,363 +27,315 @@ final class MacDictationEngine: ObservableObject {
 
     // MARK: - Published state
 
+    /// Live, incrementally updating transcript shown while recording.
     @Published var liveTranscript: String = ""
+
+    /// Clean, AI-polished transcript. Populated after cleanup finishes.
     @Published var polishedTranscript: String = ""
+
+    /// True while the microphone is actively capturing audio.
     @Published private(set) var isRecording: Bool = false
+
+    /// True while the Claude cleanup request is in-flight.
     @Published private(set) var isPolishing: Bool = false
+
+    /// Last user-visible error, if any.
     @Published var errorMessage: String?
+
+    /// 0.0-1.0 normalized mic level, drives the waveform display.
     @Published private(set) var audioLevel: Float = 0.0
 
-    /// Called when the engine auto-detects silence.
-    var onSilenceDetected: (() -> Void)?
-
-    /// How long to wait after the last non-silent buffer before
-    /// firing onSilenceDetected.
-    var silenceThreshold: TimeInterval = 2.0
-
-    /// Called once after polish() finishes, with the final text.
-    var onPolishComplete: ((String) -> Void)?
-
-    // MARK: - Configuration
-
+    /// Active tone preset.
     @Published var tonePreset: TonePreset = .loadPersisted() {
         didSet { tonePreset.persist() }
     }
 
-    // MARK: - Speech / audio plumbing
+    /// When true, polished text is auto-copied to clipboard.
+    @Published var autoClipboard: Bool = true
 
-    private let speechRecognizer: SFSpeechRecognizer? =
-        SFSpeechRecognizer(locale: Locale(identifier: "en-US"))
+    // MARK: - Silence detection
+
+    /// How long to wait after the last non-silent buffer before
+    /// auto-stopping. Set to 0 to disable.
+    var silenceThreshold: TimeInterval = 3.0
+
+    /// Called when the engine auto-detects silence and stops.
+    var onSilenceDetected: (() -> Void)?
+
+    // MARK: - Speech / audio internals
+
+    private let speechRecognizer: SFSpeechRecognizer? = SFSpeechRecognizer(locale: Locale.current)
     private let audioEngine = AVAudioEngine()
-
     private var recognitionRequest: SFSpeechAudioBufferRecognitionRequest?
     private var recognitionTask: SFSpeechRecognitionTask?
 
-    private var stitchedSegments: [String] = []
+    /// Accumulated finalized transcript from previous rotation segments.
+    private var finalizedText: String = ""
+
+    /// Timer for rotating the recognition session before Apple's 1-minute
+    /// limit hits.
     private var rotationTimer: Timer?
-    private let rotationInterval: TimeInterval = 55.0
 
-    /// Wall-clock of the most recent buffer that was "loud enough".
-    private var lastNonSilentAt: Date = Date()
-    private let silenceRMSThreshold: Float = 0.02
-    private var silencePollTimer: Timer?
-    private var silenceDetectionEnabled: Bool = false
+    /// Timestamp of the last buffer that had non-trivial audio level.
+    private var lastNonSilentTime: Date = Date()
 
-    /// Universal dev/git/HTTP vocabulary pushed into
-    /// SFSpeechRecognizer contextualStrings for the Code tone.
-    fileprivate static let codeToneContextualStrings: [String] = [
-        "pull request", "merge request", "merge conflict", "rebase",
-        "cherry-pick", "fast-forward", "upstream", "origin", "branch",
-        "commit", "diff", "stash", "squash", "force push",
-        "GET request", "POST request", "PUT request", "PATCH request",
-        "DELETE request", "HEAD request", "OPTIONS request",
-        "API", "endpoint", "payload", "JSON", "GraphQL", "gRPC",
-        "webhook", "middleware", "rate limit", "auth token", "JWT",
-        "OAuth", "bearer token", "CORS",
-        "TypeScript", "JavaScript", "Python", "Swift", "Kotlin", "Rust",
-        "Golang", "React", "SwiftUI", "UIKit", "Node.js", "Django",
-        "FastAPI", "Kubernetes", "Docker", "Terraform",
-        "sync", "async", "await", "promise", "callback", "closure",
-        "mutex", "semaphore", "lambda",
-        "p50", "p95", "p99", "SLO", "SLA", "k8s", "OOM", "LRU cache",
-    ]
+    /// Timer that checks for silence.
+    private var silenceTimer: Timer?
 
-    private var terminateObserver: Any?
-
-    // MARK: - Init / Deinit
+    // MARK: - Init
 
     init() {
-        // Release mic when the app quits.
-        terminateObserver = NotificationCenter.default.addObserver(
-            forName: NSApplication.willTerminateNotification,
-            object: nil,
-            queue: .main
-        ) { [weak self] _ in
-            guard let self else { return }
-            self.audioEngine.inputNode.removeTap(onBus: 0)
-            self.audioEngine.stop()
-            self.recognitionRequest?.endAudio()
-            self.recognitionTask?.cancel()
-        }
-    }
-
-    deinit {
-        if let obs = terminateObserver {
-            NotificationCenter.default.removeObserver(obs)
-        }
-        audioEngine.inputNode.removeTap(onBus: 0)
-        audioEngine.stop()
+        requestPermissions()
     }
 
     // MARK: - Permissions
 
-    func requestPermissions() async -> Bool {
-        let speechOK: Bool = await withCheckedContinuation { cont in
-            SFSpeechRecognizer.requestAuthorization { status in
-                cont.resume(returning: status == .authorized)
+    private func requestPermissions() {
+        SFSpeechRecognizer.requestAuthorization { [weak self] status in
+            Task { @MainActor in
+                switch status {
+                case .authorized:
+                    break
+                case .denied, .restricted:
+                    self?.errorMessage = "Speech recognition permission denied. Enable in System Settings > Privacy & Security > Speech Recognition."
+                case .notDetermined:
+                    self?.errorMessage = "Speech recognition permission not yet granted."
+                @unknown default:
+                    break
+                }
             }
         }
-        if !speechOK {
-            errorMessage = "Speech recognition permission denied."
-        }
-        return speechOK
     }
 
-    // MARK: - Public API
+    // MARK: - Start / Stop
 
-    func start(withSilenceAutoStop: Bool = true) async {
-        self.silenceDetectionEnabled = withSilenceAutoStop
+    func start() {
         guard !isRecording else { return }
-
-        let granted = await requestPermissions()
-        guard granted else {
-            print("[VF] Speech permission denied")
+        guard let speechRecognizer, speechRecognizer.isAvailable else {
+            errorMessage = "Speech recognizer is not available on this system."
             return
         }
-        print("[VF] Speech permission OK")
 
-        guard let recognizer = speechRecognizer, recognizer.isAvailable else {
-            errorMessage = "Speech recognizer unavailable."
-            print("[VF] Speech recognizer unavailable")
-            return
-        }
-        print("[VF] Recognizer available, starting...")
-
-        stitchedSegments.removeAll()
+        errorMessage = nil
         liveTranscript = ""
         polishedTranscript = ""
-        errorMessage = nil
+        finalizedText = ""
+        lastNonSilentTime = Date()
 
         do {
-            try startNewRecognitionSession()
+            try startAudioEngineAndRecognition()
             isRecording = true
-            lastNonSilentAt = Date()
-            print("[VF] Recording started")
-            scheduleRotationTimer()
-            if silenceDetectionEnabled {
-                scheduleSilencePollTimer()
-            }
+            startSilenceTimer()
         } catch {
-            errorMessage = "Could not start dictation: \(error.localizedDescription)"
-            print("[VF] Start FAILED: \(error)")
-            teardownAudio()
+            errorMessage = "Failed to start audio: \(error.localizedDescription)"
         }
     }
 
-    func stop() async {
+    func stop() {
+        guard isRecording else { return }
+        isRecording = false
+        stopSilenceTimer()
+        stopAudioEngine()
+
+        // Trigger cleanup
+        let rawTranscript = buildFinalTranscript()
+        if !rawTranscript.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
+            Task {
+                await polish(rawTranscript: rawTranscript)
+            }
+        }
+    }
+
+    /// Toggle start/stop — used by the global hotkey.
+    func toggle() {
+        if isRecording {
+            stop()
+        } else {
+            start()
+        }
+    }
+
+    // MARK: - Audio engine (macOS — no AVAudioSession)
+
+    private func startAudioEngineAndRecognition() throws {
+        // Cancel any prior task
+        recognitionTask?.cancel()
+        recognitionTask = nil
+
+        let request = SFSpeechAudioBufferRecognitionRequest()
+        request.shouldReportPartialResults = true
+        request.requiresOnDeviceRecognition = false
+
+        // On macOS there is no AVAudioSession. We configure the input
+        // node directly from AVAudioEngine.
+        let inputNode = audioEngine.inputNode
+        let recordingFormat = inputNode.outputFormat(forBus: 0)
+
+        // Validate that we actually have a usable audio format
+        guard recordingFormat.sampleRate > 0, recordingFormat.channelCount > 0 else {
+            throw NSError(
+                domain: "MacDictationEngine",
+                code: -1,
+                userInfo: [NSLocalizedDescriptionKey: "No audio input device available. Check System Settings > Sound > Input."]
+            )
+        }
+
+        inputNode.installTap(onBus: 0, bufferSize: 1024, format: recordingFormat) { [weak self] buffer, _ in
+            request.append(buffer)
+            self?.updateAudioLevel(buffer: buffer)
+        }
+
+        audioEngine.prepare()
+        try audioEngine.start()
+
+        recognitionRequest = request
+        startRecognitionTask(request: request)
+
+        // Rotate before Apple's 1-minute limit
+        rotationTimer?.invalidate()
+        rotationTimer = Timer.scheduledTimer(withTimeInterval: 55, repeats: true) { [weak self] _ in
+            Task { @MainActor in
+                self?.rotateRecognitionSession()
+            }
+        }
+    }
+
+    private func startRecognitionTask(request: SFSpeechAudioBufferRecognitionRequest) {
+        guard let speechRecognizer else { return }
+
+        recognitionTask = speechRecognizer.recognitionTask(with: request) { [weak self] result, error in
+            Task { @MainActor in
+                guard let self else { return }
+
+                if let result {
+                    let partial = result.bestTranscription.formattedString
+                    self.liveTranscript = self.finalizedText.isEmpty
+                        ? partial
+                        : self.finalizedText + " " + partial
+                }
+
+                if let error {
+                    // Ignore cancellation errors from rotation
+                    let nsError = error as NSError
+                    if nsError.domain != "kAFAssistantErrorDomain" || nsError.code != 216 {
+                        // Only show non-trivial errors
+                        if self.isRecording {
+                            self.errorMessage = "Recognition error: \(error.localizedDescription)"
+                        }
+                    }
+                }
+            }
+        }
+    }
+
+    private func rotateRecognitionSession() {
         guard isRecording else { return }
 
-        isRecording = false
+        // Capture whatever we have so far
+        let currentLive = liveTranscript
+        finalizedText = currentLive
 
+        // Tear down old recognition (keep audio engine running)
+        recognitionRequest?.endAudio()
+        recognitionTask?.cancel()
+        recognitionTask = nil
+        recognitionRequest = nil
+
+        // Start a new recognition request on the existing audio tap
+        let newRequest = SFSpeechAudioBufferRecognitionRequest()
+        newRequest.shouldReportPartialResults = true
+        newRequest.requiresOnDeviceRecognition = false
+
+        // Re-install tap is not needed — the existing tap will feed
+        // into the new request once we set recognitionRequest. But
+        // since the tap closure captures the old request, we need to
+        // reinstall it.
+        let inputNode = audioEngine.inputNode
+        let recordingFormat = inputNode.outputFormat(forBus: 0)
+
+        inputNode.removeTap(onBus: 0)
+        inputNode.installTap(onBus: 0, bufferSize: 1024, format: recordingFormat) { [weak self] buffer, _ in
+            newRequest.append(buffer)
+            self?.updateAudioLevel(buffer: buffer)
+        }
+
+        recognitionRequest = newRequest
+        startRecognitionTask(request: newRequest)
+    }
+
+    private func stopAudioEngine() {
         rotationTimer?.invalidate()
         rotationTimer = nil
-        silencePollTimer?.invalidate()
-        silencePollTimer = nil
-        silenceDetectionEnabled = false
 
-        finalizeCurrentSegmentIntoStitched()
-        teardownAudio()
-        audioLevel = 0
+        recognitionRequest?.endAudio()
+        recognitionTask?.cancel()
+        recognitionTask = nil
+        recognitionRequest = nil
 
-        liveTranscript = stitchedSegments
-            .joined(separator: " ")
-            .trimmingCharacters(in: .whitespacesAndNewlines)
-
-        await polish()
+        audioEngine.inputNode.removeTap(onBus: 0)
+        audioEngine.stop()
     }
 
-    /// Toggle dictation on/off. Used by the global hotkey.
-    func toggle() async {
-        if isRecording {
-            await stop()
-        } else {
-            await start()
-        }
+    private func buildFinalTranscript() -> String {
+        return liveTranscript
     }
 
-    func clearBuffers() {
-        liveTranscript = ""
-        polishedTranscript = ""
-        stitchedSegments.removeAll()
-    }
+    // MARK: - Audio level metering
 
-    // MARK: - Session rotation
+    private nonisolated func updateAudioLevel(buffer: AVAudioPCMBuffer) {
+        guard let channelData = buffer.floatChannelData else { return }
 
-    private func scheduleRotationTimer() {
-        rotationTimer?.invalidate()
-        rotationTimer = Timer.scheduledTimer(
-            withTimeInterval: rotationInterval,
-            repeats: false
-        ) { [weak self] _ in
-            Task { @MainActor [weak self] in
-                self?.rotateSession()
+        let channelDataValue = channelData.pointee
+        let channelDataValueArray = stride(
+            from: 0,
+            to: Int(buffer.frameLength),
+            by: buffer.stride
+        ).map { channelDataValue[$0] }
+
+        let rms = sqrt(channelDataValueArray.map { $0 * $0 }.reduce(0, +) / Float(buffer.frameLength))
+
+        // Convert to 0-1 range with some scaling for typical speech levels
+        let level = max(0, min(1, rms * 5))
+
+        Task { @MainActor [weak self] in
+            self?.audioLevel = level
+            if level > 0.01 {
+                self?.lastNonSilentTime = Date()
             }
         }
     }
 
-    private func scheduleSilencePollTimer() {
-        silencePollTimer?.invalidate()
-        silencePollTimer = Timer.scheduledTimer(
-            withTimeInterval: 0.25,
-            repeats: true
-        ) { [weak self] _ in
-            Task { @MainActor [weak self] in
-                guard let self, self.isRecording else { return }
-                guard !self.liveTranscript.isEmpty else { return }
-                let elapsed = Date().timeIntervalSince(self.lastNonSilentAt)
-                if elapsed >= self.silenceThreshold {
-                    self.silencePollTimer?.invalidate()
-                    self.silencePollTimer = nil
+    // MARK: - Silence detection
+
+    private func startSilenceTimer() {
+        silenceTimer?.invalidate()
+        silenceTimer = Timer.scheduledTimer(withTimeInterval: 0.5, repeats: true) { [weak self] _ in
+            Task { @MainActor in
+                guard let self, self.isRecording, self.silenceThreshold > 0 else { return }
+
+                let elapsed = Date().timeIntervalSince(self.lastNonSilentTime)
+                if elapsed >= self.silenceThreshold,
+                   !self.liveTranscript.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
+                    self.stop()
                     self.onSilenceDetected?()
                 }
             }
         }
     }
 
-    private func rotateSession() {
-        guard isRecording else { return }
-        finalizeCurrentSegmentIntoStitched()
-        do {
-            try startNewRecognitionSession(keepingAudioEngineRunning: true)
-            scheduleRotationTimer()
-        } catch {
-            errorMessage = "Session rotation failed: \(error.localizedDescription)"
-        }
+    private func stopSilenceTimer() {
+        silenceTimer?.invalidate()
+        silenceTimer = nil
     }
 
-    private func finalizeCurrentSegmentIntoStitched() {
-        let alreadyStitched = stitchedSegments
-            .joined(separator: " ")
-            .trimmingCharacters(in: .whitespacesAndNewlines)
-        var newPortion = liveTranscript
-        if !alreadyStitched.isEmpty, liveTranscript.hasPrefix(alreadyStitched) {
-            newPortion = String(liveTranscript.dropFirst(alreadyStitched.count))
-        }
-        let trimmed = newPortion.trimmingCharacters(in: .whitespacesAndNewlines)
-        if !trimmed.isEmpty {
-            stitchedSegments.append(trimmed)
-        }
+    // MARK: - Polish (Claude cleanup)
 
-        recognitionRequest?.endAudio()
-        recognitionTask?.finish()
-        recognitionTask = nil
-        recognitionRequest = nil
-    }
-
-    // MARK: - Audio / recognizer wiring
-
-    private func startNewRecognitionSession(
-        keepingAudioEngineRunning: Bool = false
-    ) throws {
-        guard let recognizer = speechRecognizer else {
-            throw NSError(
-                domain: "MacDictationEngine",
-                code: -1,
-                userInfo: [NSLocalizedDescriptionKey: "No recognizer"]
-            )
-        }
-
-        let request = SFSpeechAudioBufferRecognitionRequest()
-        request.shouldReportPartialResults = true
-        if #available(macOS 13.0, *) {
-            request.addsPunctuation = true
-        }
-
-        var contextual: [String] = []
-        if tonePreset == .code {
-            contextual.append(contentsOf: Self.codeToneContextualStrings)
-        }
-        if !contextual.isEmpty {
-            request.contextualStrings = contextual
-        }
-
-        recognitionRequest = request
-
-        let inputNode = audioEngine.inputNode
-        let format = inputNode.outputFormat(forBus: 0)
-
-        print("[VF] Audio format: \(format.sampleRate)Hz, \(format.channelCount)ch")
-
-        guard format.sampleRate > 0, format.channelCount > 0 else {
-            throw NSError(
-                domain: "MacDictationEngine",
-                code: -2,
-                userInfo: [NSLocalizedDescriptionKey: "No audio input device. Check System Settings > Sound > Input and Privacy > Microphone."]
-            )
-        }
-
-        if keepingAudioEngineRunning {
-            inputNode.removeTap(onBus: 0)
-        }
-
-        inputNode.installTap(
-            onBus: 0,
-            bufferSize: 1024,
-            format: format
-        ) { [weak self] buffer, _ in
-            self?.recognitionRequest?.append(buffer)
-            let rms = Self.rms(of: buffer)
-            Task { @MainActor [weak self] in
-                guard let self else { return }
-                self.audioLevel = rms
-                if rms > self.silenceRMSThreshold {
-                    self.lastNonSilentAt = Date()
-                }
-            }
-        }
-
-        recognitionTask = recognizer.recognitionTask(with: request) {
-            [weak self] result, error in
-            guard let self else { return }
-            Task { @MainActor in
-                guard self.isRecording else { return }
-
-                if let result {
-                    let stitched = self.stitchedSegments
-                        .joined(separator: " ")
-                        .trimmingCharacters(in: .whitespacesAndNewlines)
-                    let current = result.bestTranscription.formattedString
-                    let combined: String
-                    if stitched.isEmpty {
-                        combined = current
-                    } else {
-                        combined = stitched + " " + current
-                    }
-                    self.liveTranscript = combined
-                }
-                if let error {
-                    self.errorMessage = error.localizedDescription
-                }
-            }
-        }
-
-        if !keepingAudioEngineRunning {
-            audioEngine.prepare()
-            try audioEngine.start()
-        }
-    }
-
-    private func teardownAudio() {
-        // Always remove tap and stop, unconditionally.
-        audioEngine.inputNode.removeTap(onBus: 0)
-        audioEngine.stop()
-        recognitionRequest?.endAudio()
-        recognitionTask?.cancel()
-        recognitionRequest = nil
-        recognitionTask = nil
-    }
-
-    // MARK: - Cleanup
-
-    func polish() async {
-        let raw = liveTranscript.trimmingCharacters(in: .whitespacesAndNewlines)
-        guard !raw.isEmpty else { return }
-
+    private func polish(rawTranscript: String) async {
         isPolishing = true
         defer { isPolishing = false }
 
         let request = ClaudeCleanup.Request(
-            rawTranscript: raw,
+            rawTranscript: rawTranscript,
             tone: tonePreset,
             packPromptHints: nil,
             packTermsBlock: nil,
@@ -392,35 +346,24 @@ final class MacDictationEngine: ObservableObject {
             let cleaned = try await ClaudeCleanup.shared.clean(request)
             polishedTranscript = cleaned
 
-            // Copy to clipboard.
-            let pasteboard = NSPasteboard.general
-            pasteboard.clearContents()
-            pasteboard.setString(cleaned, forType: .string)
-
-            onPolishComplete?(cleaned)
+            if autoClipboard {
+                copyToClipboard(cleaned)
+            }
         } catch {
-            errorMessage = "Polish failed: \(error.localizedDescription)"
+            errorMessage = "Cleanup failed: \(error.localizedDescription)"
+            // Fall back to raw transcript on clipboard
+            polishedTranscript = rawTranscript
+            if autoClipboard {
+                copyToClipboard(rawTranscript)
+            }
         }
     }
 
-    // MARK: - Helpers
+    // MARK: - Clipboard
 
-    private static func rms(of buffer: AVAudioPCMBuffer) -> Float {
-        guard let channelData = buffer.floatChannelData else { return 0 }
-        let channelCount = Int(buffer.format.channelCount)
-        let frameLength = Int(buffer.frameLength)
-        guard frameLength > 0 else { return 0 }
-
-        var sum: Float = 0
-        for ch in 0..<channelCount {
-            let samples = channelData[ch]
-            for i in 0..<frameLength {
-                let v = samples[i]
-                sum += v * v
-            }
-        }
-        let mean = sum / Float(frameLength * channelCount)
-        let rms = sqrtf(mean)
-        return min(1.0, rms * 4.0)
+    private func copyToClipboard(_ text: String) {
+        let pasteboard = NSPasteboard.general
+        pasteboard.clearContents()
+        pasteboard.setString(text, forType: .string)
     }
 }
