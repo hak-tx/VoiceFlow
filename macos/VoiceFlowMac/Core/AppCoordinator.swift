@@ -110,6 +110,12 @@ final class AppCoordinator: ObservableObject {
 
         hotkeyManager.install()
 
+        // Auto-prompt for Accessibility permission on first launch.
+        if !hotkeyManager.hasAccessibilityPermission {
+            log.info("Accessibility not granted — prompting user")
+            hotkeyManager.requestAccessibilityPermission()
+        }
+
         Task {
             await vocabManager.loadInstalledPacks()
             log.info("Loaded \(self.vocabManager.installedPacks.count) vocab packs")
