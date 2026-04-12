@@ -174,21 +174,17 @@ final class GlobalHotkeyManager: ObservableObject {
 
     /// Check whether Accessibility permission has been granted.
     func checkAccessibilityPermission() {
-        let trusted = AXIsProcessTrustedWithOptions(
-            [kAXTrustedCheckOptionPrompt.takeRetainedValue() as String: false] as CFDictionary
-        )
+        // Use AXIsProcessTrusted() — no arguments, no CFString
+        // bridging issues, just returns a Bool.
+        let trusted = AXIsProcessTrusted()
         hasAccessibilityPermission = trusted
+        log.info("AXIsProcessTrusted = \(trusted)")
     }
 
-    /// Prompt the user for Accessibility permission. Opens the
-    /// System Settings → Privacy & Security → Accessibility pane
-    /// with VoiceFlow highlighted. Permission persists permanently
-    /// once granted (survives reboots, app updates via the same
-    /// bundle ID). The polling timer detects when it's granted.
+    /// Prompt the user for Accessibility permission.
     func requestAccessibilityPermission() {
-        let _ = AXIsProcessTrustedWithOptions(
-            [kAXTrustedCheckOptionPrompt.takeRetainedValue() as String: true] as CFDictionary
-        )
+        let options = ["AXTrustedCheckOptionPrompt": true] as CFDictionary
+        let _ = AXIsProcessTrustedWithOptions(options)
     }
 
     /// Poll every 2 seconds to detect when Accessibility permission
