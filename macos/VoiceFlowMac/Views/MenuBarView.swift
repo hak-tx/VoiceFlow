@@ -348,12 +348,23 @@ struct MenuBarView: View {
                 .buttonStyle(.plain)
             }
 
-            SettingsLink {
-                Image(systemName: "gearshape")
-                    .font(.system(size: 11))
+            if #available(macOS 14.0, *) {
+                SettingsLink {
+                    Image(systemName: "gearshape")
+                        .font(.system(size: 11))
+                }
+                .buttonStyle(.plain)
+                .help("Settings")
+            } else {
+                Button {
+                    NSApp.sendAction(Selector(("showPreferencesWindow:")), to: nil, from: nil)
+                } label: {
+                    Image(systemName: "gearshape")
+                        .font(.system(size: 11))
+                }
+                .buttonStyle(.plain)
+                .help("Settings")
             }
-            .buttonStyle(.plain)
-            .help("Settings")
 
             Button {
                 NSApp.terminate(nil)
