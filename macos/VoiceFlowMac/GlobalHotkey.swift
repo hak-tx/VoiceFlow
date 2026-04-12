@@ -2,16 +2,16 @@
 //  GlobalHotkey.swift
 //  VoiceFlowMac
 //
-//  Registers Cmd+Shift+D as a global hotkey to start/stop dictation
-//  from anywhere on macOS.
+//  Detects a double-tap of the Control (^) key to toggle dictation.
+//  Works globally — even when another app is frontmost.
 //
-//  Uses NSEvent.addGlobalMonitorForEvents for key-down events. This
-//  requires the app to have Accessibility permissions granted by the
-//  user in System Settings > Privacy & Security > Accessibility.
+//  How it works: monitors NSEvent.flagsChanged for the .control
+//  modifier. When Control is pressed twice within 0.4s, it fires.
+//  This mirrors the UX of macOS dictation (double-tap Fn) and
+//  feels natural for power users.
 //
-//  Note: addGlobalMonitorForEvents only receives events when THIS app
-//  is NOT the frontmost app. For events while the app is frontmost we
-//  also install a local monitor.
+//  Requires Accessibility permissions (System Settings → Privacy
+//  & Security → Accessibility).
 //
 
 import AppKit
@@ -32,13 +32,24 @@ final class GlobalHotkeyManager: ObservableObject {
     /// Accessibility permission status.
     @Published private(set) var hasAccessibilityPermission: Bool = false
 
+    /// Maximum interval between two Control taps to count as a
+    /// double-tap. Configurable via UserDefaults if we add a
+    /// settings UI later.
+    var doubleTapInterval: TimeInterval = 0.4
+
+    /// Timestamp of the last Control key-down.
+    private var lastControlDown: Date?
+
+    /// Track whether Control is currently held so we only count
+    /// distinct press events, not repeats.
+    private var controlIsDown: Bool = false
+
     init() {
         checkAccessibilityPermission()
         register()
     }
 
     deinit {
-        // Cannot call MainActor methods in deinit directly; just nil them out.
         if let g = globalMonitor { NSEvent.removeMonitor(g) }
         if let l = localMonitor { NSEvent.removeMonitor(l) }
     }
@@ -48,21 +59,18 @@ final class GlobalHotkeyManager: ObservableObject {
     func register() {
         unregister()
 
-        // Global monitor: fires when another app is frontmost
-        globalMonitor = NSEvent.addGlobalMonitorForEvents(matching: .keyDown) { [weak self] event in
+        // Monitor flagsChanged (modifier key press/release) instead
+        // of keyDown — Control by itself doesn't generate keyDown.
+        globalMonitor = NSEvent.addGlobalMonitorForEvents(matching: .flagsChanged) { [weak self] event in
             Task { @MainActor in
-                self?.handleKeyEvent(event)
+                self?.handleFlagsChanged(event)
             }
         }
 
-        // Local monitor: fires when this app is frontmost
-        localMonitor = NSEvent.addLocalMonitorForEvents(matching: .keyDown) { [weak self] event in
+        localMonitor = NSEvent.addLocalMonitorForEvents(matching: .flagsChanged) { [weak self] event in
             Task { @MainActor in
-                self?.handleKeyEvent(event)
+                self?.handleFlagsChanged(event)
             }
-            // Return the event so other responders still see it.
-            // If we consumed it (Cmd+Shift+D), we could return nil,
-            // but it's safer to let it pass through for menu-bar apps.
             return event
         }
 
@@ -81,24 +89,38 @@ final class GlobalHotkeyManager: ObservableObject {
         isRegistered = false
     }
 
-    // MARK: - Event handling
+    // MARK: - Double-tap detection
 
-    private func handleKeyEvent(_ event: NSEvent) {
-        // Check for Cmd+Shift+D
-        guard event.modifierFlags.contains([.command, .shift]),
-              event.charactersIgnoringModifiers?.lowercased() == "d" else {
-            return
+    private func handleFlagsChanged(_ event: NSEvent) {
+        let controlPressed = event.modifierFlags.contains(.control)
+
+        // Only fire on press (not release), and only if no other
+        // modifiers are held (so Ctrl+C etc. don't trigger).
+        let otherModifiers: NSEvent.ModifierFlags = [.command, .option, .shift]
+        let hasOtherModifiers = !event.modifierFlags.intersection(otherModifiers).isEmpty
+
+        if controlPressed && !controlIsDown && !hasOtherModifiers {
+            // Control just went down (fresh press).
+            controlIsDown = true
+
+            let now = Date()
+            if let last = lastControlDown,
+               now.timeIntervalSince(last) <= doubleTapInterval {
+                // Double-tap detected!
+                lastControlDown = nil
+                engine?.toggle()
+            } else {
+                lastControlDown = now
+            }
+        } else if !controlPressed && controlIsDown {
+            // Control released.
+            controlIsDown = false
         }
-
-        engine?.toggle()
     }
 
     // MARK: - Accessibility check
 
     func checkAccessibilityPermission() {
-        // Check if we have accessibility access (required for global
-        // event monitoring). This call also prompts the user the first
-        // time if the `prompt` option is true.
         let trusted = AXIsProcessTrustedWithOptions(
             [kAXTrustedCheckOptionPrompt.takeUnretainedValue(): true] as CFDictionary
         )
