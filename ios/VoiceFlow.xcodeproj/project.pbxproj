@@ -45,6 +45,15 @@
 		B1600002000000000000A101 /* general-business.json in Resources */ = {isa = PBXBuildFile; fileRef = F1600002000000000000A101 /* general-business.json */; };
 		B1600003000000000000A101 /* medical-general.json in Resources */ = {isa = PBXBuildFile; fileRef = F1600003000000000000A101 /* medical-general.json */; };
 		B1600004000000000000A101 /* catalog.json in Resources */ = {isa = PBXBuildFile; fileRef = F1600004000000000000A101 /* catalog.json */; };
+
+		B2100001000000000000A101 /* KeyboardViewController.swift in Sources */ = {isa = PBXBuildFile; fileRef = F2100001000000000000A101 /* KeyboardViewController.swift */; };
+		B2100002000000000000A101 /* VoiceFlowKeyboardEngine.swift in Sources */ = {isa = PBXBuildFile; fileRef = F2100002000000000000A101 /* VoiceFlowKeyboardEngine.swift */; };
+		B2100003000000000000A101 /* KeyboardRootView.swift in Sources */ = {isa = PBXBuildFile; fileRef = F2100003000000000000A101 /* KeyboardRootView.swift */; };
+		B2100004000000000000A101 /* ClaudeCleanup.swift in Sources */ = {isa = PBXBuildFile; fileRef = F1100002000000000000A101 /* ClaudeCleanup.swift */; };
+		B2100005000000000000A101 /* Secrets.swift in Sources */ = {isa = PBXBuildFile; fileRef = F1000002000000000000A101 /* Secrets.swift */; };
+		B2100006000000000000A101 /* TonePreset.swift in Sources */ = {isa = PBXBuildFile; fileRef = F1300001000000000000A101 /* TonePreset.swift */; };
+
+		B2200001000000000000A101 /* VoiceFlowKeyboard.appex in Embed App Extensions */ = {isa = PBXBuildFile; fileRef = F2000001000000000000A101 /* VoiceFlowKeyboard.appex */; settings = {ATTRIBUTES = (RemoveHeadersOnCopy, ); }; };
 /* End PBXBuildFile section */
 
 /* Begin PBXFileReference section */
@@ -88,10 +97,37 @@
 		F1600002000000000000A101 /* general-business.json */ = {isa = PBXFileReference; lastKnownFileType = text.json; path = "general-business.json"; sourceTree = "<group>"; };
 		F1600003000000000000A101 /* medical-general.json */ = {isa = PBXFileReference; lastKnownFileType = text.json; path = "medical-general.json"; sourceTree = "<group>"; };
 		F1600004000000000000A101 /* catalog.json */ = {isa = PBXFileReference; lastKnownFileType = text.json; path = "catalog.json"; sourceTree = "<group>"; };
+
+		F2000001000000000000A101 /* VoiceFlowKeyboard.appex */ = {isa = PBXFileReference; explicitFileType = "wrapper.app-extension"; includeInIndex = 0; path = VoiceFlowKeyboard.appex; sourceTree = BUILT_PRODUCTS_DIR; };
+		F2100001000000000000A101 /* KeyboardViewController.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = KeyboardViewController.swift; sourceTree = "<group>"; };
+		F2100002000000000000A101 /* VoiceFlowKeyboardEngine.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = VoiceFlowKeyboardEngine.swift; sourceTree = "<group>"; };
+		F2100003000000000000A101 /* KeyboardRootView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = KeyboardRootView.swift; sourceTree = "<group>"; };
+		F2100004000000000000A101 /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist.xml; path = Info.plist; sourceTree = "<group>"; };
 /* End PBXFileReference section */
+
+/* Begin PBXCopyFilesBuildPhase section */
+		Y1000001000000000000A101 /* Embed App Extensions */ = {
+			isa = PBXCopyFilesBuildPhase;
+			buildActionMask = 2147483647;
+			dstPath = "";
+			dstSubfolderSpec = 13;
+			files = (
+				B2200001000000000000A101 /* VoiceFlowKeyboard.appex in Embed App Extensions */,
+			);
+			name = "Embed App Extensions";
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXCopyFilesBuildPhase section */
 
 /* Begin PBXFrameworksBuildPhase section */
 		P1000001000000000000A101 /* Frameworks */ = {
+			isa = PBXFrameworksBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		P2000001000000000000A101 /* Frameworks */ = {
 			isa = PBXFrameworksBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
@@ -105,6 +141,7 @@
 			isa = PBXGroup;
 			children = (
 				G1000002000000000000A101 /* VoiceFlow */,
+				G2000001000000000000A101 /* VoiceFlowKeyboard */,
 				G1000003000000000000A101 /* Products */,
 			);
 			sourceTree = "<group>";
@@ -131,8 +168,20 @@
 			isa = PBXGroup;
 			children = (
 				F1000000000000000000A101 /* VoiceFlow.app */,
+				F2000001000000000000A101 /* VoiceFlowKeyboard.appex */,
 			);
 			name = Products;
+			sourceTree = "<group>";
+		};
+		G2000001000000000000A101 /* VoiceFlowKeyboard */ = {
+			isa = PBXGroup;
+			children = (
+				F2100001000000000000A101 /* KeyboardViewController.swift */,
+				F2100002000000000000A101 /* VoiceFlowKeyboardEngine.swift */,
+				F2100003000000000000A101 /* KeyboardRootView.swift */,
+				F2100004000000000000A101 /* Info.plist */,
+			);
+			path = VoiceFlowKeyboard;
 			sourceTree = "<group>";
 		};
 		G1000004000000000000A101 /* Core */ = {
@@ -223,17 +272,54 @@
 				P1000002000000000000A101 /* Sources */,
 				P1000001000000000000A101 /* Frameworks */,
 				P1000003000000000000A101 /* Resources */,
+				Y1000001000000000000A101 /* Embed App Extensions */,
 			);
 			buildRules = (
 			);
 			dependencies = (
+				D2000002000000000000A101 /* PBXTargetDependency */,
 			);
 			name = VoiceFlow;
 			productName = VoiceFlow;
 			productReference = F1000000000000000000A101 /* VoiceFlow.app */;
 			productType = "com.apple.product-type.application";
 		};
+		T2000001000000000000A101 /* VoiceFlowKeyboard */ = {
+			isa = PBXNativeTarget;
+			buildConfigurationList = C2000001000000000000A101 /* Build configuration list for PBXNativeTarget "VoiceFlowKeyboard" */;
+			buildPhases = (
+				P2000002000000000000A101 /* Sources */,
+				P2000001000000000000A101 /* Frameworks */,
+				P2000003000000000000A101 /* Resources */,
+			);
+			buildRules = (
+			);
+			dependencies = (
+			);
+			name = VoiceFlowKeyboard;
+			productName = VoiceFlowKeyboard;
+			productReference = F2000001000000000000A101 /* VoiceFlowKeyboard.appex */;
+			productType = "com.apple.product-type.app-extension";
+		};
 /* End PBXNativeTarget section */
+
+/* Begin PBXContainerItemProxy section */
+		D2000001000000000000A101 /* PBXContainerItemProxy */ = {
+			isa = PBXContainerItemProxy;
+			containerPortal = R1000001000000000000A101 /* Project object */;
+			proxyType = 1;
+			remoteGlobalIDString = T2000001000000000000A101;
+			remoteInfo = VoiceFlowKeyboard;
+		};
+/* End PBXContainerItemProxy section */
+
+/* Begin PBXTargetDependency section */
+		D2000002000000000000A101 /* PBXTargetDependency */ = {
+			isa = PBXTargetDependency;
+			target = T2000001000000000000A101 /* VoiceFlowKeyboard */;
+			targetProxy = D2000001000000000000A101 /* PBXContainerItemProxy */;
+		};
+/* End PBXTargetDependency section */
 
 /* Begin PBXProject section */
 		R1000001000000000000A101 /* Project object */ = {
@@ -244,6 +330,9 @@
 				LastUpgradeCheck = 1500;
 				TargetAttributes = {
 					T1000001000000000000A101 = {
+						CreatedOnToolsVersion = 15.0;
+					};
+					T2000001000000000000A101 = {
 						CreatedOnToolsVersion = 15.0;
 					};
 				};
@@ -262,6 +351,7 @@
 			projectRoot = "";
 			targets = (
 				T1000001000000000000A101 /* VoiceFlow */,
+				T2000001000000000000A101 /* VoiceFlowKeyboard */,
 			);
 		};
 /* End PBXProject section */
@@ -277,6 +367,13 @@
 				B1600002000000000000A101 /* general-business.json in Resources */,
 				B1600003000000000000A101 /* medical-general.json in Resources */,
 				B1600004000000000000A101 /* catalog.json in Resources */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		P2000003000000000000A101 /* Resources */ = {
+			isa = PBXResourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -313,6 +410,19 @@
 				B1500001000000000000A101 /* ShareExtensionPlaceholder.swift in Sources */,
 				B1000002000000000000A101 /* Secrets.swift in Sources */,
 				B1000001000000000000A101 /* VoiceFlowApp.swift in Sources */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		P2000002000000000000A101 /* Sources */ = {
+			isa = PBXSourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				B2100001000000000000A101 /* KeyboardViewController.swift in Sources */,
+				B2100002000000000000A101 /* VoiceFlowKeyboardEngine.swift in Sources */,
+				B2100003000000000000A101 /* KeyboardRootView.swift in Sources */,
+				B2100004000000000000A101 /* ClaudeCleanup.swift in Sources */,
+				B2100005000000000000A101 /* Secrets.swift in Sources */,
+				B2100006000000000000A101 /* TonePreset.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -492,6 +602,54 @@
 			};
 			name = Release;
 		};
+		C2000002000000000000A101 /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ALWAYS_EMBED_SWIFT_STANDARD_LIBRARIES = YES;
+				CODE_SIGN_STYLE = Automatic;
+				CURRENT_PROJECT_VERSION = 1;
+				GENERATE_INFOPLIST_FILE = NO;
+				INFOPLIST_FILE = VoiceFlowKeyboard/Info.plist;
+				IPHONEOS_DEPLOYMENT_TARGET = 17.0;
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/Frameworks",
+					"@executable_path/../../Frameworks",
+				);
+				MARKETING_VERSION = 1.0.0;
+				PRODUCT_BUNDLE_IDENTIFIER = "com.hak-tx.voiceflow.keyboard";
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SKIP_INSTALL = YES;
+				SWIFT_EMIT_LOC_STRINGS = YES;
+				SWIFT_VERSION = 5.0;
+				TARGETED_DEVICE_FAMILY = "1,2";
+			};
+			name = Debug;
+		};
+		C2000003000000000000A101 /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ALWAYS_EMBED_SWIFT_STANDARD_LIBRARIES = YES;
+				CODE_SIGN_STYLE = Automatic;
+				CURRENT_PROJECT_VERSION = 1;
+				GENERATE_INFOPLIST_FILE = NO;
+				INFOPLIST_FILE = VoiceFlowKeyboard/Info.plist;
+				IPHONEOS_DEPLOYMENT_TARGET = 17.0;
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/Frameworks",
+					"@executable_path/../../Frameworks",
+				);
+				MARKETING_VERSION = 1.0.0;
+				PRODUCT_BUNDLE_IDENTIFIER = "com.hak-tx.voiceflow.keyboard";
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SKIP_INSTALL = YES;
+				SWIFT_EMIT_LOC_STRINGS = YES;
+				SWIFT_VERSION = 5.0;
+				TARGETED_DEVICE_FAMILY = "1,2";
+			};
+			name = Release;
+		};
 /* End XCBuildConfiguration section */
 
 /* Begin XCConfigurationList section */
@@ -509,6 +667,15 @@
 			buildConfigurations = (
 				C1000005000000000000A101 /* Debug */,
 				C1000006000000000000A101 /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Release;
+		};
+		C2000001000000000000A101 /* Build configuration list for PBXNativeTarget "VoiceFlowKeyboard" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				C2000002000000000000A101 /* Debug */,
+				C2000003000000000000A101 /* Release */,
 			);
 			defaultConfigurationIsVisible = 0;
 			defaultConfigurationName = Release;
