@@ -378,7 +378,9 @@ final class MacDictationEngine: ObservableObject {
             pb.clearContents()
             pb.setString(cleaned, forType: .string)
         } catch {
-            errorMessage = "Cleanup failed: \(error.localizedDescription)"
+            // Cleanup failed — the raw text is already at the cursor
+            // from live typing, so just leave it. Log the error.
+            print("[VF] Cleanup failed: \(error.localizedDescription)")
             polishedTranscript = rawTranscript
         }
     }
@@ -410,20 +412,43 @@ final class MacDictationEngine: ObservableObject {
         }
     }
 
-    /// Type incremental updates. For live typing, we accumulate
-    /// and only paste the final cleaned result (live partial results
-    /// are too noisy for paste-based insertion). The user hears the
-    /// start/stop tones and sees the cleanup appear after stop.
+    /// Type incremental updates into the active app LIVE as the
+    /// user speaks. Compares new transcript against what's already
+    /// typed and only sends the diff.
     private func typeIncrementalUpdate(_ current: String) {
-        // Live text just updates the internal state.
-        // Actual insertion happens after cleanup via replaceTypedText.
+        if current.hasPrefix(lastTypedText) {
+            let newPart = String(current.dropFirst(lastTypedText.count))
+            if !newPart.isEmpty {
+                cgType(newPart)
+                typedCharCount += newPart.count
+            }
+        } else {
+            // Recognizer revised earlier words — delete and retype.
+            cgDeleteBackward(typedCharCount)
+            cgType(current)
+            typedCharCount = current.count
+        }
         lastTypedText = current
     }
 
-    /// After cleanup, paste the cleaned text at the cursor.
+    /// After cleanup, delete the raw text and type the cleaned text.
     private func replaceTypedText(with cleaned: String) {
-        pasteTextAtCursor(cleaned)
+        cgDeleteBackward(typedCharCount)
+        cgType(cleaned)
         typedCharCount = 0
         lastTypedText = ""
+    }
+
+    /// Simulate pressing Delete/Backspace N times.
+    private func cgDeleteBackward(_ count: Int) {
+        let src = CGEventSource(stateID: .hidSystemState)
+        for _ in 0..<count {
+            if let down = CGEvent(keyboardEventSource: src, virtualKey: 51, keyDown: true) {
+                down.post(tap: .cghidEventTap)
+            }
+            if let up = CGEvent(keyboardEventSource: src, virtualKey: 51, keyDown: false) {
+                up.post(tap: .cghidEventTap)
+            }
+        }
     }
 }
