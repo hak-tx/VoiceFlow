@@ -46,6 +46,13 @@ final class DictationEngine: ObservableObject {
     /// True while the microphone is actively capturing audio.
     @Published private(set) var isRecording: Bool = false
 
+    /// True while the current recording session is replacing a
+    /// highlighted chunk of an existing transcript (via
+    /// `startReplacingSelection`). Used by the UI to show a
+    /// "Re-dictating selection…" banner so the user knows their
+    /// original transcript isn't lost.
+    @Published private(set) var isReplacingSelection: Bool = false
+
     /// True while the polish request is in-flight.
     @Published private(set) var isPolishing: Bool = false
 
@@ -101,6 +108,43 @@ final class DictationEngine: ObservableObject {
     private var rotationTimer: Timer?
     private let rotationInterval: TimeInterval = 55.0
 
+    /// When non-nil, the next polish() will splice the cleaned result
+    /// into `replaceBase` at `replaceRange` instead of overwriting
+    /// polishedTranscript wholesale. Used for highlight-to-redictate,
+    /// where the user selects a chunk of existing text and speaks a
+    /// replacement. Cleared automatically after each polish.
+    private var replaceBase: String?
+    private var replaceRange: NSRange?
+
+    /// Universal dev/git/HTTP vocabulary pushed into SFSpeechRecognizer
+    /// `contextualStrings` whenever the Code tone is active. Biases the
+    /// recognizer toward the correct term when a speaker dictates
+    /// technical content. Not exhaustive — designed to catch the common
+    /// misrecognitions ("post request" for "pull request", "sink" for
+    /// "sync", etc.).
+    fileprivate static let codeToneContextualStrings: [String] = [
+        // Git / source control
+        "pull request", "merge request", "merge conflict", "rebase",
+        "cherry-pick", "fast-forward", "upstream", "origin", "branch",
+        "commit", "diff", "stash", "squash", "force push",
+        // HTTP verbs (the big one — these are all-caps and common)
+        "GET request", "POST request", "PUT request", "PATCH request",
+        "DELETE request", "HEAD request", "OPTIONS request",
+        // REST / API
+        "API", "endpoint", "payload", "JSON", "GraphQL", "gRPC",
+        "webhook", "middleware", "rate limit", "auth token", "JWT",
+        "OAuth", "bearer token", "CORS",
+        // Common language / framework terms
+        "TypeScript", "JavaScript", "Python", "Swift", "Kotlin", "Rust",
+        "Golang", "React", "SwiftUI", "UIKit", "Node.js", "Django",
+        "FastAPI", "Kubernetes", "Docker", "Terraform",
+        // Common mis-heard pairs
+        "sync", "async", "await", "promise", "callback", "closure",
+        "mutex", "semaphore", "lambda",
+        // Infra shorthand
+        "p50", "p95", "p99", "SLO", "SLA", "k8s", "OOM", "LRU cache",
+    ]
+
     /// Wall-clock of the most recent buffer that was "loud enough"
     /// to count as non-silent. Used for the silence detector.
     private var lastNonSilentAt: Date = Date()
@@ -135,6 +179,32 @@ final class DictationEngine: ObservableObject {
     /// QuickDictateView).
     func start(withSilenceAutoStop: Bool = false) async {
         self.silenceDetectionEnabled = withSilenceAutoStop
+        self.replaceBase = nil
+        self.replaceRange = nil
+        await startInternal()
+    }
+
+    /// Start dictating a replacement for an already-existing chunk of
+    /// text. The next polish() will splice the cleaned new speech into
+    /// `base` at `range` instead of overwriting the whole transcript.
+    /// Used by DictationView's "Re-dictate selection" flow: user
+    /// highlights text, taps the button, speaks, and the selected
+    /// range is replaced in-place when cleanup completes.
+    func startReplacingSelection(in base: String, range: NSRange) async {
+        // Guard against obviously-bad ranges.
+        let ns = base as NSString
+        let safeRange = NSRange(
+            location: max(0, min(range.location, ns.length)),
+            length: max(0, min(range.length, ns.length - min(range.location, ns.length)))
+        )
+        self.replaceBase = base
+        self.replaceRange = safeRange
+        self.isReplacingSelection = true
+        self.silenceDetectionEnabled = false
+        // Wipe live state so the replacement dictation starts fresh.
+        self.liveTranscript = ""
+        self.polishedTranscript = ""
+        self.stitchedSegments.removeAll()
         await startInternal()
     }
 
@@ -328,6 +398,25 @@ final class DictationEngine: ObservableObject {
         if #available(iOS 16.0, *) {
             request.addsPunctuation = true
         }
+
+        // Bias the speech recognizer toward the user's active vocab
+        // pack terms + the universal dev/git corpus for the Code tone.
+        // `contextualStrings` tells Apple's recognizer "these phrases
+        // are likely to appear" and dramatically reduces misrecognition
+        // of domain jargon. This is why "pull request" was coming back
+        // as "post request" — the STT had no prior on git terminology
+        // and picked the more common HTTP verb.
+        var contextual: [String] = []
+        if let packTerms = vocabManager?.combinedContextualStrings() {
+            contextual.append(contentsOf: packTerms)
+        }
+        if tonePreset == .code {
+            contextual.append(contentsOf: Self.codeToneContextualStrings)
+        }
+        if !contextual.isEmpty {
+            request.contextualStrings = contextual
+        }
+
         recognitionRequest = request
 
         let inputNode = audioEngine.inputNode
@@ -453,16 +542,49 @@ final class DictationEngine: ObservableObject {
 
         do {
             let cleaned = try await ClaudeCleanup.shared.clean(request)
-            polishedTranscript = cleaned
-            cachedPolishedTranscript = cleaned
+
+            // Splice mode: we're replacing a highlighted range in an
+            // existing transcript rather than overwriting the whole
+            // polishedTranscript with the cleaned new speech.
+            if let base = replaceBase, let range = replaceRange {
+                let mutable = NSMutableString(string: base)
+                mutable.replaceCharacters(in: range, with: cleaned)
+                let spliced = mutable as String
+                polishedTranscript = spliced
+                cachedPolishedTranscript = spliced
+                // Also overwrite liveTranscript so an Undo button tap
+                // (which clears polishedTranscript) doesn't collapse
+                // the transcript to just the new speech fragment.
+                liveTranscript = spliced
+                replaceBase = nil
+                replaceRange = nil
+                isReplacingSelection = false
+                onPolishComplete?(spliced)
+            } else {
+                polishedTranscript = cleaned
+                cachedPolishedTranscript = cleaned
+                onPolishComplete?(cleaned)
+            }
+
             usageTracker?.recordCleanup(
                 wordCount: wordCount(cleaned),
                 tonePreset: tonePreset,
                 model: model
             )
-            onPolishComplete?(cleaned)
         } catch {
             errorMessage = "Polish failed: \(error.localizedDescription)"
+            // Abandon pending replace on error so the user isn't stuck
+            // in splice mode forever. Restore the pre-splice transcript
+            // so the user doesn't lose their original text just because
+            // the network call failed.
+            if let base = replaceBase {
+                polishedTranscript = base
+                liveTranscript = base
+                cachedPolishedTranscript = base
+            }
+            replaceBase = nil
+            replaceRange = nil
+            isReplacingSelection = false
         }
     }
 

@@ -18,6 +18,7 @@ enum TonePreset: String, CaseIterable, Identifiable, Codable {
     case email
     case slack
     case notes
+    case code
     case socialPost
     case professional
 
@@ -30,6 +31,7 @@ enum TonePreset: String, CaseIterable, Identifiable, Codable {
         case .email:        return "Email"
         case .slack:        return "Slack"
         case .notes:        return "Notes"
+        case .code:         return "Code"
         case .socialPost:   return "Social Post"
         case .professional: return "Professional"
         }
@@ -46,6 +48,8 @@ enum TonePreset: String, CaseIterable, Identifiable, Codable {
             return "Casual, concise, chat-friendly."
         case .notes:
             return "Bullet points and short phrases."
+        case .code:
+            return "Preserves HTTP verbs, git terms, identifiers, symbols."
         case .socialPost:
             return "Punchy, short, emoji-aware."
         case .professional:
@@ -60,16 +64,17 @@ enum TonePreset: String, CaseIterable, Identifiable, Codable {
         case .email:        return "envelope"
         case .slack:        return "bubble.left.and.bubble.right"
         case .notes:        return "list.bullet"
+        case .code:         return "chevron.left.forwardslash.chevron.right"
         case .socialPost:   return "megaphone"
         case .professional: return "briefcase"
         }
     }
 
     /// Whether this preset is gated to Pro tier. Verbatim + email +
-    /// notes are available on free; the rest require Pro.
+    /// notes + code are available on free; the rest require Pro.
     var requiresPro: Bool {
         switch self {
-        case .verbatim, .email, .notes: return false
+        case .verbatim, .email, .notes, .code: return false
         case .slack, .socialPost, .professional: return true
         }
     }
@@ -121,6 +126,65 @@ enum TonePreset: String, CaseIterable, Identifiable, Codable {
             - Use nested bullets ("  - " indent) for sub-items.
             - When the speaker says "bullet point" or "next bullet" or similar, \
             treat that as a separator, don't include the literal words.
+            """
+        case .code:
+            return """
+            The speaker is a software engineer dictating technical content — \
+            code review comments, standup notes, PR descriptions, design docs, \
+            debugging thoughts. Apply code-aware cleanup:
+
+            - PRESERVE HTTP VERBS EXACTLY. GET, POST, PUT, PATCH, DELETE, HEAD, \
+            OPTIONS stay in UPPERCASE. If the speech-to-text wrote them in \
+            mixed case ("Get request"), fix to "GET request".
+            - PRESERVE GIT / DEV TERMS. "pull request", "PR", "merge conflict", \
+            "rebase", "cherry-pick", "fast-forward", "branch", "commit", \
+            "staging", "main", "origin", "upstream" — these are sacred. If the \
+            STT misheard one (e.g. "post request" where the speaker clearly \
+            meant "pull request" in a git context, or "sink" where they meant \
+            "sync"), repair to the correct term.
+            - PRESERVE IDENTIFIERS AND SYMBOLS. CamelCase (getUserById), \
+            snake_case (user_id), kebab-case (feature-flag), SCREAMING_SNAKE \
+            (MAX_RETRIES), dotted paths (foo.bar.baz), namespaced \
+            (std::vector), generics (Array<String>), decorators (@override). \
+            Never "fix" these into English prose.
+            - SPOKEN SYMBOLS → REAL SYMBOLS when clearly meant as code syntax:
+                "dot" → .
+                "arrow" / "right arrow" → ->
+                "fat arrow" → =>
+                "double equals" → ==
+                "triple equals" → ===
+                "not equals" → !=
+                "open paren" / "close paren" → ( )
+                "open brace" / "close brace" → { }
+                "open bracket" / "close bracket" → [ ]
+                "colon" → :
+                "semicolon" → ;
+                "pipe" → |
+                "double pipe" → ||
+                "ampersand" → &
+                "double amp" → &&
+                "hash" / "pound" → #
+                "dollar sign" → $
+                "backtick" → `
+                Only do this when the context is clearly code (inside a \
+                function, listing args, writing a command). Don't convert \
+                "dot" in prose like "it's dot com".
+            - PRESERVE VERSION NUMBERS, ERROR CODES, FILE PATHS, URLS. \
+            "v1.2.3", "500 error", "404", "/api/v1/users", "s3://bucket/key", \
+            "localhost:3000" — all stay verbatim.
+            - PRESERVE ACRONYMS. PR, API, SDK, CLI, CI/CD, SLO, SLA, p95, k8s, \
+            OOM, JWT, JSON, YAML, TOML, TCP, UDP, HTTPS, OAuth, REST, gRPC, \
+            GraphQL, SQL, NoSQL. If the STT expanded one into prose, \
+            contract it back.
+            - WRAP CODE SNIPPETS IN BACKTICKS when the speaker clearly dictated \
+            a command, function call, or identifier reference. E.g. "run \
+            npm install" → "run `npm install`". Use single backticks for \
+            inline code. Use triple backticks only if the speaker dictated \
+            multiple lines of code as a block.
+            - Keep everything else (prose around the code) clean and natural, \
+            following the base cleanup rules.
+            - DO NOT add explanatory commentary, don't translate code into \
+            English, don't add "here's the code:" preambles.
             """
         case .socialPost:
             return """

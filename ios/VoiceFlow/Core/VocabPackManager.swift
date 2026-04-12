@@ -261,6 +261,20 @@ final class VocabPackManager: ObservableObject {
         return unique.map { "- \($0)" }.joined(separator: "\n")
     }
 
+    /// Flat array of every term + phrase from every active pack,
+    /// de-duplicated. Used by DictationEngine to set
+    /// SFSpeechRecognizer.contextualStrings so Apple's speech
+    /// recognizer is biased toward the user's domain jargon at the
+    /// STT layer (before cleanup ever runs). Capped at 100 entries
+    /// because Apple documents contextualStrings as "up to 100
+    /// strings" — more than that and the recognizer starts ignoring
+    /// them silently.
+    func combinedContextualStrings() -> [String] {
+        let merged = activePacks.flatMap { $0.terms + $0.phrases }
+        let unique = Array(NSOrderedSet(array: merged)) as? [String] ?? []
+        return Array(unique.prefix(100))
+    }
+
     // MARK: - Custom vocab (Pro)
 
     private var hasAnyCustom: Bool {
