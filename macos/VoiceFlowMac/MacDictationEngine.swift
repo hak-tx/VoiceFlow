@@ -86,6 +86,44 @@ final class MacDictationEngine: ObservableObject {
 
     init() {
         requestPermissions()
+
+        // Ensure mic is released when app quits — prevents locking
+        // the mic and breaking native macOS dictation.
+        NotificationCenter.default.addObserver(
+            forName: NSApplication.willTerminateNotification,
+            object: nil,
+            queue: .main
+        ) { [weak self] _ in
+            self?.forceCleanup()
+        }
+    }
+
+    /// Force-release all audio resources. Called on app termination
+    /// and deinit to prevent mic lockup.
+    private func forceCleanup() {
+        rotationTimer?.invalidate()
+        rotationTimer = nil
+        silenceTimer?.invalidate()
+        silenceTimer = nil
+        recognitionRequest?.endAudio()
+        recognitionTask?.cancel()
+        recognitionTask = nil
+        recognitionRequest = nil
+        if audioEngine.isRunning {
+            audioEngine.inputNode.removeTap(onBus: 0)
+            audioEngine.stop()
+        }
+        isRecording = false
+    }
+
+    deinit {
+        rotationTimer?.invalidate()
+        silenceTimer?.invalidate()
+        recognitionTask?.cancel()
+        if audioEngine.isRunning {
+            audioEngine.inputNode.removeTap(onBus: 0)
+            audioEngine.stop()
+        }
     }
 
     // MARK: - Permissions
@@ -127,6 +165,8 @@ final class MacDictationEngine: ObservableObject {
             isRecording = true
             startSilenceTimer()
         } catch {
+            // Release mic on failure so native dictation isn't blocked.
+            stopAudioEngine()
             errorMessage = "Failed to start audio: \(error.localizedDescription)"
         }
     }
@@ -272,8 +312,10 @@ final class MacDictationEngine: ObservableObject {
         recognitionTask = nil
         recognitionRequest = nil
 
-        audioEngine.inputNode.removeTap(onBus: 0)
-        audioEngine.stop()
+        if audioEngine.isRunning {
+            audioEngine.inputNode.removeTap(onBus: 0)
+            audioEngine.stop()
+        }
     }
 
     private func buildFinalTranscript() -> String {
