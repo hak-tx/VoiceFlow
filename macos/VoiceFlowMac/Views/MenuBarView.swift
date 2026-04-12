@@ -21,10 +21,19 @@ struct MenuBarView: View {
     @EnvironmentObject var accessibilityManager: AccessibilityTextManager
 
     @State private var showingVocabPicker = false
+    @State private var apiKeyInput: String = ""
+    @State private var showingAPIKeyField = false
 
     var body: some View {
         VStack(spacing: 0) {
             header
+
+            // Setup prompts — show until configured
+            if !Secrets.isAPIKeyConfigured || !hotkeyManager.hasAccessibilityPermission {
+                Divider()
+                setupPrompts
+            }
+
             Divider()
             toneRow
             Divider()
@@ -92,6 +101,57 @@ struct MenuBarView: View {
         if engine.isRecording { return "Recording — ⌃⌃ to stop" }
         if engine.isPolishing { return "Cleaning up with Claude..." }
         return "Ready — ⌃⌃ to dictate"
+    }
+
+    // MARK: - Setup prompts
+
+    private var setupPrompts: some View {
+        VStack(alignment: .leading, spacing: 8) {
+            // API Key
+            if !Secrets.isAPIKeyConfigured {
+                VStack(alignment: .leading, spacing: 4) {
+                    HStack(spacing: 4) {
+                        Image(systemName: "key.fill")
+                            .foregroundStyle(.orange)
+                            .font(.system(size: 10))
+                        Text("Enter your Anthropic API key:")
+                            .font(.system(size: 11, weight: .medium))
+                    }
+                    HStack(spacing: 6) {
+                        SecureField("sk-ant-api03-...", text: $apiKeyInput)
+                            .textFieldStyle(.roundedBorder)
+                            .font(.system(size: 11, design: .monospaced))
+                        Button("Save") {
+                            let trimmed = apiKeyInput.trimmingCharacters(in: .whitespacesAndNewlines)
+                            guard !trimmed.isEmpty else { return }
+                            Secrets.saveAPIKey(trimmed)
+                            apiKeyInput = ""
+                        }
+                        .controlSize(.small)
+                        .disabled(apiKeyInput.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty)
+                    }
+                }
+            }
+
+            // Accessibility
+            if !hotkeyManager.hasAccessibilityPermission {
+                HStack(spacing: 6) {
+                    Image(systemName: "exclamationmark.shield.fill")
+                        .foregroundStyle(.orange)
+                        .font(.system(size: 10))
+                    Text("Accessibility permission needed for ⌃⌃ hotkey")
+                        .font(.system(size: 11))
+                    Spacer()
+                    Button("Grant") {
+                        hotkeyManager.requestAccessibilityPermission()
+                    }
+                    .controlSize(.small)
+                }
+            }
+        }
+        .padding(.horizontal, 14)
+        .padding(.vertical, 8)
+        .background(Color.orange.opacity(0.05))
     }
 
     // MARK: - Tone row
@@ -289,10 +349,11 @@ struct MenuBarView: View {
             }
 
             Button {
-                if #available(macOS 14.0, *) {
+                // Activate the app first, then open Settings.
+                // MenuBarExtra popovers can't send actions without this.
+                NSApp.activate(ignoringOtherApps: true)
+                DispatchQueue.main.asyncAfter(deadline: .now() + 0.1) {
                     NSApp.sendAction(Selector(("showSettingsWindow:")), to: nil, from: nil)
-                } else {
-                    NSApp.sendAction(Selector(("showPreferencesWindow:")), to: nil, from: nil)
                 }
             } label: {
                 Image(systemName: "gearshape")
