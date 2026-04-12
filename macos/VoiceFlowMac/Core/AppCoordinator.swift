@@ -254,7 +254,18 @@ final class AppCoordinator: ObservableObject {
 
     // MARK: - Manual start/stop (from menu bar UI)
 
+    /// Start dictation from the menu bar mic button. Dismisses the
+    /// popover first so focus returns to whatever app the user was
+    /// in, then captures cursor position and begins recording.
     func startDictationManually() async {
+        // Dismiss the menu bar popover so focus goes back to the
+        // user's target app. Without this, the AX API reads the
+        // popover's text fields instead of the target app's.
+        NSApp.keyWindow?.close()
+
+        // Wait for focus to actually transfer back.
+        try? await Task.sleep(nanoseconds: 300_000_000)
+
         await handleHotkeyActivate()
     }
 

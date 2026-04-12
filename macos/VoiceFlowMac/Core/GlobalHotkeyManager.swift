@@ -16,6 +16,9 @@
 import Cocoa
 import Combine
 import Carbon.HIToolbox
+import os.log
+
+private let log = Logger(subsystem: "com.hak-tx.voiceflow.mac", category: "Hotkey")
 
 @MainActor
 final class GlobalHotkeyManager: ObservableObject {
@@ -79,7 +82,13 @@ final class GlobalHotkeyManager: ObservableObject {
     /// Install the global event tap. Call once on app launch after
     /// wiring onActivate/onDeactivate.
     func install() {
-        guard eventTap == nil else { return }
+        guard eventTap == nil else {
+            log.info("Event tap already installed")
+            return
+        }
+
+        log.info("Attempting to install CGEvent tap...")
+        log.info("AXIsProcessTrusted: \(AXIsProcessTrusted())")
 
         let mask: CGEventMask = (1 << CGEventType.flagsChanged.rawValue)
 
@@ -128,11 +137,13 @@ final class GlobalHotkeyManager: ObservableObject {
             userInfo: nil
         ) else {
             hasAccessibilityPermission = false
+            log.error("CGEvent.tapCreate FAILED — Accessibility permission not granted or sandbox blocking")
             return
         }
 
         hasAccessibilityPermission = true
         eventTap = tap
+        log.info("CGEvent tap installed successfully — ⌃⌃ hotkey active")
 
         let source = CFMachPortCreateRunLoopSource(kCFAllocatorDefault, tap, 0)
         runLoopSource = source
