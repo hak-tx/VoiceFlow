@@ -245,7 +245,7 @@ struct PermissionsSettingsTab: View {
                         // Opens System Settings → Privacy & Security →
                         // Accessibility with VoiceFlow highlighted.
                         let _ = AXIsProcessTrustedWithOptions(
-                            [kAXTrustedCheckOptionPrompt as String: true] as CFDictionary
+                            [kAXTrustedCheckOptionPrompt.takeRetainedValue() as String: true] as CFDictionary
                         )
                     }
                 )
@@ -297,7 +297,7 @@ struct PermissionsSettingsTab: View {
 
     private func checkPermissions() {
         accessibilityGranted = AXIsProcessTrustedWithOptions(
-            [kAXTrustedCheckOptionPrompt as String: false] as CFDictionary
+            [kAXTrustedCheckOptionPrompt.takeRetainedValue() as String: false] as CFDictionary
         )
 
         if #available(macOS 14.0, *) {

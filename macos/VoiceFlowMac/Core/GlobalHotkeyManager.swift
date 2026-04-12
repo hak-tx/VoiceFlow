@@ -158,7 +158,7 @@ final class GlobalHotkeyManager: ObservableObject {
     /// Check whether Accessibility permission has been granted.
     func checkAccessibilityPermission() {
         let trusted = AXIsProcessTrustedWithOptions(
-            [kAXTrustedCheckOptionPrompt as String: false] as CFDictionary
+            [kAXTrustedCheckOptionPrompt.takeRetainedValue() as String: false] as CFDictionary
         )
         hasAccessibilityPermission = trusted
     }
@@ -170,7 +170,7 @@ final class GlobalHotkeyManager: ObservableObject {
     /// bundle ID). The polling timer detects when it's granted.
     func requestAccessibilityPermission() {
         let _ = AXIsProcessTrustedWithOptions(
-            [kAXTrustedCheckOptionPrompt as String: true] as CFDictionary
+            [kAXTrustedCheckOptionPrompt.takeRetainedValue() as String: true] as CFDictionary
         )
     }
 
