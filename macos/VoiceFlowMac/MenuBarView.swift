@@ -121,21 +121,6 @@ struct MenuBarView: View {
                     .lineLimit(3)
             }
 
-            // Accessibility warning
-            if !hotkey.isAccessibilityGranted {
-                HStack(spacing: 4) {
-                    Image(systemName: "exclamationmark.triangle.fill")
-                        .foregroundColor(.yellow)
-                        .font(.caption)
-                    Text("Grant Accessibility permission for global hotkey.")
-                        .font(.caption2)
-                        .foregroundColor(.secondary)
-                }
-                .onTapGesture {
-                    hotkey.checkAccessibilityPermission()
-                }
-            }
-
             Divider()
 
             Button("Quit VoiceFlow") {
