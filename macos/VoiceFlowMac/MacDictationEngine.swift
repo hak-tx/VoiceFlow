@@ -125,6 +125,7 @@ final class MacDictationEngine: ObservableObject {
         previousLiveTranscript = ""
 
         do {
+            TonePlayer.shared.playStart()
             try startAudioEngineAndRecognition()
             isRecording = true
             startSilenceTimer()
@@ -136,6 +137,7 @@ final class MacDictationEngine: ObservableObject {
     func stop() {
         guard isRecording else { return }
         isRecording = false
+        TonePlayer.shared.playStop()
         stopSilenceTimer()
         stopAudioEngine()
 

@@ -25,7 +25,9 @@ struct VoiceFlowMacApp: App {
                     hotkeyManager.engine = engine
                 }
         } label: {
-            Image(systemName: engine.isRecording ? "mic.fill" : "mic")
+            // Use waveform (not mic) so it doesn't clash with macOS's
+            // own speech-recognition mic indicator in the menu bar.
+            Image(systemName: engine.isRecording ? "waveform.circle.fill" : "waveform")
         }
         .menuBarExtraStyle(.window)
     }

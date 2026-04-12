@@ -13,6 +13,7 @@
 
 		B1100001000000000000A102 /* MacDictationEngine.swift in Sources */ = {isa = PBXBuildFile; fileRef = F1100001000000000000A102 /* MacDictationEngine.swift */; };
 		B1100002000000000000A102 /* GlobalHotkey.swift in Sources */ = {isa = PBXBuildFile; fileRef = F1100002000000000000A102 /* GlobalHotkey.swift */; };
+		B1100003000000000000A102 /* TonePlayer.swift in Sources */ = {isa = PBXBuildFile; fileRef = F1100003000000000000A102 /* TonePlayer.swift */; };
 
 		B1200001000000000000A102 /* MenuBarView.swift in Sources */ = {isa = PBXBuildFile; fileRef = F1200001000000000000A102 /* MenuBarView.swift */; };
 		B1200002000000000000A102 /* DictationFloatingPanel.swift in Sources */ = {isa = PBXBuildFile; fileRef = F1200002000000000000A102 /* DictationFloatingPanel.swift */; };
@@ -31,6 +32,7 @@
 
 		F1100001000000000000A102 /* MacDictationEngine.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MacDictationEngine.swift; sourceTree = "<group>"; };
 		F1100002000000000000A102 /* GlobalHotkey.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = GlobalHotkey.swift; sourceTree = "<group>"; };
+		F1100003000000000000A102 /* TonePlayer.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TonePlayer.swift; sourceTree = "<group>"; };
 
 		F1200001000000000000A102 /* MenuBarView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MenuBarView.swift; sourceTree = "<group>"; };
 		F1200002000000000000A102 /* DictationFloatingPanel.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DictationFloatingPanel.swift; sourceTree = "<group>"; };
@@ -67,6 +69,7 @@
 				F1000003000000000000A102 /* Info.plist */,
 				F1100001000000000000A102 /* MacDictationEngine.swift */,
 				F1100002000000000000A102 /* GlobalHotkey.swift */,
+				F1100003000000000000A102 /* TonePlayer.swift */,
 				G1000004000000000000A102 /* Views */,
 				G1000005000000000000A102 /* Shared */,
 				F1000005000000000000A102 /* Assets.xcassets */,
@@ -174,6 +177,7 @@
 				B1000002000000000000A102 /* Secrets.swift in Sources */,
 				B1100001000000000000A102 /* MacDictationEngine.swift in Sources */,
 				B1100002000000000000A102 /* GlobalHotkey.swift in Sources */,
+				B1100003000000000000A102 /* TonePlayer.swift in Sources */,
 				B1200001000000000000A102 /* MenuBarView.swift in Sources */,
 				B1200002000000000000A102 /* DictationFloatingPanel.swift in Sources */,
 				B1300001000000000000A102 /* ClaudeCleanup.swift in Sources */,
