@@ -17,21 +17,31 @@ struct MenuBarView: View {
     @ObservedObject var engine: MacDictationEngine
     @ObservedObject var hotkey: GlobalHotkey
 
-    var body: some View {
-        VStack(alignment: .leading, spacing: 12) {
+    /// All available vocab packs.
+    private let allPacks = [
+        "Software Dev", "General Business", "Medical General",
+        "Corporate Law", "Real Estate", "Construction",
+        "Finance & Banking", "Marketing & Advertising",
+        "Management Consulting", "Healthcare Nursing",
+        "Accounting & Tax"
+    ]
 
-            // Title row
+    @State private var activePacks: Set<String> = ["General Business"]
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 14) {
+
+            // Title
             HStack {
                 Image(systemName: "waveform.circle.fill")
+                    .font(.title2)
                     .foregroundColor(.accentColor)
                 Text("VoiceFlow")
-                    .font(.headline)
+                    .font(.title3.bold())
                 Spacer()
                 if engine.isRecording {
-                    Circle()
-                        .fill(Color.red)
-                        .frame(width: 8)
-                        .frame(height: 8)
+                    Circle().fill(Color.red)
+                        .frame(width: 10, height: 10)
                 }
             }
 
@@ -40,30 +50,32 @@ struct MenuBarView: View {
             // Start / Stop
             Button(action: {
                 engine.toggle()
-                // Return focus to the previous app so CGEvents
-                // (live typing) go to the user's cursor, not here.
                 DispatchQueue.main.asyncAfter(deadline: .now() + 0.1) {
                     NSApp.hide(nil)
                 }
             }) {
                 HStack {
                     Image(systemName: engine.isRecording
-                          ? "stop.circle.fill"
-                          : "mic.circle.fill")
+                          ? "stop.circle.fill" : "mic.circle.fill")
+                        .font(.title3)
                     Text(engine.isRecording ? "Stop Dictation" : "Start Dictation")
+                        .font(.body.bold())
                     Spacer()
-                    Text("^^")
-                        .font(.caption)
+                    Text("⌃⌃")
+                        .font(.body)
                         .foregroundColor(.secondary)
                 }
+                .padding(.vertical, 4)
             }
             .buttonStyle(.plain)
 
-            // Tone picker
+            Divider()
+
+            // Tone
             HStack {
-                Text("Tone:")
-                    .foregroundColor(.secondary)
-                    .font(.caption)
+                Text("Tone")
+                    .font(.body.bold())
+                Spacer()
                 Picker("", selection: $engine.tonePreset) {
                     ForEach(TonePreset.allCases) { preset in
                         Text(preset.title).tag(preset)
@@ -74,42 +86,58 @@ struct MenuBarView: View {
                 .fixedSize()
             }
 
-            // Vocab packs (placeholder — packs loaded from iOS bundle)
-            HStack {
-                Text("Vocab:")
-                    .foregroundColor(.secondary)
-                    .font(.caption)
-                Text("General Business")
-                    .font(.caption)
-                    .foregroundColor(.primary)
-                Spacer()
-                Text("Edit…")
-                    .font(.caption2)
-                    .foregroundColor(.accentColor)
+            // Vocab Packs
+            VStack(alignment: .leading, spacing: 8) {
+                Text("Industry Vocab Packs")
+                    .font(.body.bold())
+
+                ForEach(allPacks, id: \.self) { pack in
+                    Button(action: {
+                        if activePacks.contains(pack) {
+                            activePacks.remove(pack)
+                        } else {
+                            activePacks.insert(pack)
+                        }
+                    }) {
+                        HStack {
+                            Image(systemName: activePacks.contains(pack)
+                                  ? "checkmark.circle.fill"
+                                  : "circle")
+                                .foregroundColor(activePacks.contains(pack)
+                                                 ? .accentColor : .secondary)
+                            Text(pack)
+                                .font(.body)
+                            Spacer()
+                        }
+                    }
+                    .buttonStyle(.plain)
+                }
             }
 
+            Divider()
+
             // Status
-            if engine.isPolishing {
-                HStack(spacing: 4) {
-                    ProgressView()
-                        .controlSize(.small)
-                    Text("Cleaning up...")
-                        .font(.caption)
+            if engine.isRecording {
+                HStack(spacing: 6) {
+                    Circle().fill(Color.red).frame(width: 8, height: 8)
+                    Text("Recording — text appears at your cursor")
+                        .font(.body)
                         .foregroundColor(.secondary)
                 }
             }
 
-            // Status
-            if engine.isRecording {
-                Text("Recording — text appears at your cursor")
-                    .font(.caption)
-                    .foregroundColor(.secondary)
+            if engine.isPolishing {
+                HStack(spacing: 6) {
+                    ProgressView().controlSize(.small)
+                    Text("Cleaning up with Claude...")
+                        .font(.body)
+                        .foregroundColor(.secondary)
+                }
             }
 
-            // Error display
             if let error = engine.errorMessage {
                 Text(error)
-                    .font(.caption)
+                    .font(.body)
                     .foregroundColor(.red)
                     .lineLimit(3)
             }
@@ -119,10 +147,11 @@ struct MenuBarView: View {
             Button("Quit VoiceFlow") {
                 NSApplication.shared.terminate(nil)
             }
+            .font(.body)
             .buttonStyle(.plain)
         }
-        .padding(12)
-        .frame(width: 280)
+        .padding(16)
+        .frame(width: 340)
         .onAppear {
             hotkey.onDoubleTap = { engine.toggle() }
             engine.onSilenceDetected = { engine.stop() }
