@@ -200,9 +200,25 @@ final class MacDictationEngine: ObservableObject {
             )
         }
 
-        inputNode.installTap(onBus: 0, bufferSize: 1024, format: recordingFormat) { [weak self] buffer, _ in
+        inputNode.installTap(onBus: 0, bufferSize: 1024, format: recordingFormat) { buffer, _ in
             request.append(buffer)
-            self?.updateAudioLevel(buffer: buffer)
+
+            // Compute RMS on audio thread, update UI on main.
+            guard let channelData = buffer.floatChannelData else { return }
+            let frameLength = Int(buffer.frameLength)
+            guard frameLength > 0 else { return }
+            let samples = channelData.pointee
+            var sum: Float = 0
+            for i in 0..<frameLength { let v = samples[i]; sum += v * v }
+            let rms = sqrt(sum / Float(frameLength))
+            let level = max(0.0, min(1.0, rms * 5.0))
+
+            Task { @MainActor [weak self] in
+                self?.audioLevel = level
+                if level > 0.01 {
+                    self?.lastNonSilentTime = Date()
+                }
+            }
         }
 
         audioEngine.prepare()
@@ -278,9 +294,18 @@ final class MacDictationEngine: ObservableObject {
         let recordingFormat = inputNode.outputFormat(forBus: 0)
 
         inputNode.removeTap(onBus: 0)
-        inputNode.installTap(onBus: 0, bufferSize: 1024, format: recordingFormat) { [weak self] buffer, _ in
+        inputNode.installTap(onBus: 0, bufferSize: 1024, format: recordingFormat) { buffer, _ in
             newRequest.append(buffer)
-            self?.updateAudioLevel(buffer: buffer)
+            let channelData = buffer.floatChannelData
+            let frameLength = Int(buffer.frameLength)
+            guard let samples = channelData?.pointee, frameLength > 0 else { return }
+            var sum: Float = 0
+            for i in 0..<frameLength { let v = samples[i]; sum += v * v }
+            let level = max(0.0, min(1.0, sqrt(sum / Float(frameLength)) * 5.0))
+            Task { @MainActor [weak self] in
+                self?.audioLevel = level
+                if level > 0.01 { self?.lastNonSilentTime = Date() }
+            }
         }
 
         recognitionRequest = newRequest
@@ -302,31 +327,6 @@ final class MacDictationEngine: ObservableObject {
 
     private func buildFinalTranscript() -> String {
         return liveTranscript
-    }
-
-    // MARK: - Audio level metering
-
-    private nonisolated func updateAudioLevel(buffer: AVAudioPCMBuffer) {
-        guard let channelData = buffer.floatChannelData else { return }
-
-        let channelDataValue = channelData.pointee
-        let channelDataValueArray = stride(
-            from: 0,
-            to: Int(buffer.frameLength),
-            by: buffer.stride
-        ).map { channelDataValue[$0] }
-
-        let rms = sqrt(channelDataValueArray.map { $0 * $0 }.reduce(0, +) / Float(buffer.frameLength))
-
-        // Convert to 0-1 range with some scaling for typical speech levels
-        let level = max(0, min(1, rms * 5))
-
-        Task { @MainActor [weak self] in
-            self?.audioLevel = level
-            if level > 0.01 {
-                self?.lastNonSilentTime = Date()
-            }
-        }
     }
 
     // MARK: - Silence detection
