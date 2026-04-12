@@ -40,10 +40,15 @@ final class GlobalHotkey: ObservableObject {
     // MARK: - Accessibility
 
     func checkAccessibilityPermission() {
-        let trusted = AXIsProcessTrustedWithOptions(
-            [kAXTrustedCheckOptionPrompt.takeUnretainedValue(): true] as CFDictionary
-        )
+        // Check without prompting first.
+        let trusted = AXIsProcessTrusted()
         isAccessibilityGranted = trusted
+        if !trusted {
+            // Only prompt if not yet granted.
+            _ = AXIsProcessTrustedWithOptions(
+                [kAXTrustedCheckOptionPrompt.takeUnretainedValue(): true] as CFDictionary
+            )
+        }
     }
 
     // MARK: - Monitor registration

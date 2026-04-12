@@ -134,12 +134,18 @@ final class MacDictationEngine: ObservableObject {
         guard !isRecording else { return }
 
         let granted = await requestPermissions()
-        guard granted else { return }
+        guard granted else {
+            print("[VF] Speech permission denied")
+            return
+        }
+        print("[VF] Speech permission OK")
 
         guard let recognizer = speechRecognizer, recognizer.isAvailable else {
             errorMessage = "Speech recognizer unavailable."
+            print("[VF] Speech recognizer unavailable")
             return
         }
+        print("[VF] Recognizer available, starting...")
 
         stitchedSegments.removeAll()
         liveTranscript = ""
@@ -150,12 +156,14 @@ final class MacDictationEngine: ObservableObject {
             try startNewRecognitionSession()
             isRecording = true
             lastNonSilentAt = Date()
+            print("[VF] Recording started")
             scheduleRotationTimer()
             if silenceDetectionEnabled {
                 scheduleSilencePollTimer()
             }
         } catch {
             errorMessage = "Could not start dictation: \(error.localizedDescription)"
+            print("[VF] Start FAILED: \(error)")
             teardownAudio()
         }
     }
