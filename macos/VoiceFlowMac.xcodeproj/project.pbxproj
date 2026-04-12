@@ -7,34 +7,46 @@
 	objects = {
 
 /* Begin PBXBuildFile section */
-		B1000001000000000000A102 /* VoiceFlowMacApp.swift in Sources */ = {isa = PBXBuildFile; fileRef = F1000001000000000000A102; };
-		B1000002000000000000A102 /* Secrets.swift in Sources */ = {isa = PBXBuildFile; fileRef = F1000002000000000000A102; };
-		B1000005000000000000A102 /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = F1000005000000000000A102; };
-		B1100001000000000000A102 /* MacDictationEngine.swift in Sources */ = {isa = PBXBuildFile; fileRef = F1100001000000000000A102; };
-		B1100002000000000000A102 /* GlobalHotkey.swift in Sources */ = {isa = PBXBuildFile; fileRef = F1100002000000000000A102; };
-		B1200001000000000000A102 /* MenuBarView.swift in Sources */ = {isa = PBXBuildFile; fileRef = F1200001000000000000A102; };
-		B1300001000000000000A102 /* ClaudeCleanup.swift in Sources */ = {isa = PBXBuildFile; fileRef = F1300001000000000000A102; };
-		B1300002000000000000A102 /* TonePreset.swift in Sources */ = {isa = PBXBuildFile; fileRef = F1300002000000000000A102; };
-		B1300003000000000000A102 /* VocabPack.swift in Sources */ = {isa = PBXBuildFile; fileRef = F1300003000000000000A102; };
+		A10001001 /* VoiceFlowMacApp.swift in Sources */ = {isa = PBXBuildFile; fileRef = A10001000 /* VoiceFlowMacApp.swift */; };
+		A10001003 /* Secrets.swift in Sources */ = {isa = PBXBuildFile; fileRef = A10001002 /* Secrets.swift */; };
+		A10002001 /* TonePreset.swift in Sources */ = {isa = PBXBuildFile; fileRef = A10002000 /* TonePreset.swift */; };
+		A10002003 /* VocabPack.swift in Sources */ = {isa = PBXBuildFile; fileRef = A10002002 /* VocabPack.swift */; };
+		A10003001 /* ClaudeCleanup.swift in Sources */ = {isa = PBXBuildFile; fileRef = A10003000 /* ClaudeCleanup.swift */; };
+		A10003003 /* GlobalHotkeyManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = A10003002 /* GlobalHotkeyManager.swift */; };
+		A10003005 /* AccessibilityTextManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = A10003004 /* AccessibilityTextManager.swift */; };
+		A10003007 /* MacDictationEngine.swift in Sources */ = {isa = PBXBuildFile; fileRef = A10003006 /* MacDictationEngine.swift */; };
+		A10003009 /* MacAppSettings.swift in Sources */ = {isa = PBXBuildFile; fileRef = A10003008 /* MacAppSettings.swift */; };
+		A1000300B /* MacVocabPackManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = A1000300A /* MacVocabPackManager.swift */; };
+		A10004001 /* MenuBarView.swift in Sources */ = {isa = PBXBuildFile; fileRef = A10004000 /* MenuBarView.swift */; };
+		A10004003 /* OverlayPanel.swift in Sources */ = {isa = PBXBuildFile; fileRef = A10004002 /* OverlayPanel.swift */; };
+		A10004005 /* MacSettingsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = A10004004 /* MacSettingsView.swift */; };
+		A10004007 /* MacVocabPackPickerView.swift in Sources */ = {isa = PBXBuildFile; fileRef = A10004006 /* MacVocabPackPickerView.swift */; };
+		A10005001 /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = A10005000 /* Assets.xcassets */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXFileReference section */
-		F1000000000000000000A102 /* VoiceFlowMac.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = VoiceFlowMac.app; sourceTree = BUILT_PRODUCTS_DIR; };
-		F1000001000000000000A102 /* VoiceFlowMacApp.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = VoiceFlowMacApp.swift; sourceTree = "<group>"; };
-		F1000002000000000000A102 /* Secrets.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Secrets.swift; sourceTree = "<group>"; };
-		F1000003000000000000A102 /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist.xml; path = Info.plist; sourceTree = "<group>"; };
-		F1000004000000000000A102 /* VoiceFlowMac.entitlements */ = {isa = PBXFileReference; lastKnownFileType = text.plist.entitlements; path = VoiceFlowMac.entitlements; sourceTree = "<group>"; };
-		F1000005000000000000A102 /* Assets.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = Assets.xcassets; sourceTree = "<group>"; };
-		F1100001000000000000A102 /* MacDictationEngine.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MacDictationEngine.swift; sourceTree = "<group>"; };
-		F1100002000000000000A102 /* GlobalHotkey.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = GlobalHotkey.swift; sourceTree = "<group>"; };
-		F1200001000000000000A102 /* MenuBarView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MenuBarView.swift; sourceTree = "<group>"; };
-		F1300001000000000000A102 /* ClaudeCleanup.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ClaudeCleanup.swift; sourceTree = "<group>"; };
-		F1300002000000000000A102 /* TonePreset.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TonePreset.swift; sourceTree = "<group>"; };
-		F1300003000000000000A102 /* VocabPack.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = VocabPack.swift; sourceTree = "<group>"; };
+		A10000000 /* VoiceFlowMac.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = VoiceFlowMac.app; sourceTree = BUILT_PRODUCTS_DIR; };
+		A10001000 /* VoiceFlowMacApp.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = VoiceFlowMacApp.swift; sourceTree = "<group>"; };
+		A10001002 /* Secrets.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Secrets.swift; sourceTree = "<group>"; };
+		A10002000 /* TonePreset.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TonePreset.swift; sourceTree = "<group>"; };
+		A10002002 /* VocabPack.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = VocabPack.swift; sourceTree = "<group>"; };
+		A10003000 /* ClaudeCleanup.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ClaudeCleanup.swift; sourceTree = "<group>"; };
+		A10003002 /* GlobalHotkeyManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = GlobalHotkeyManager.swift; sourceTree = "<group>"; };
+		A10003004 /* AccessibilityTextManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AccessibilityTextManager.swift; sourceTree = "<group>"; };
+		A10003006 /* MacDictationEngine.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MacDictationEngine.swift; sourceTree = "<group>"; };
+		A10003008 /* MacAppSettings.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MacAppSettings.swift; sourceTree = "<group>"; };
+		A1000300A /* MacVocabPackManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MacVocabPackManager.swift; sourceTree = "<group>"; };
+		A10004000 /* MenuBarView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MenuBarView.swift; sourceTree = "<group>"; };
+		A10004002 /* OverlayPanel.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = OverlayPanel.swift; sourceTree = "<group>"; };
+		A10004004 /* MacSettingsView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MacSettingsView.swift; sourceTree = "<group>"; };
+		A10004006 /* MacVocabPackPickerView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MacVocabPackPickerView.swift; sourceTree = "<group>"; };
+		A10005000 /* Assets.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = Assets.xcassets; sourceTree = "<group>"; };
+		A10006000 /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist.xml; path = Info.plist; sourceTree = "<group>"; };
+		A10006002 /* VoiceFlowMac.entitlements */ = {isa = PBXFileReference; lastKnownFileType = text.plist.entitlements; path = VoiceFlowMac.entitlements; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
-		P1000001000000000000A102 /* Frameworks */ = {
+		A10000010 /* Frameworks */ = {
 			isa = PBXFrameworksBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
@@ -44,58 +56,88 @@
 /* End PBXFrameworksBuildPhase section */
 
 /* Begin PBXGroup section */
-		G1000001000000000000A102 = {
+		A10000020 = {
 			isa = PBXGroup;
 			children = (
-				G1000002000000000000A102 /* VoiceFlowMac */,
-				G1000003000000000000A102 /* Products */,
+				A10000030 /* VoiceFlowMac */,
+				A10000040 /* Products */,
 			);
 			sourceTree = "<group>";
 		};
-		G1000002000000000000A102 /* VoiceFlowMac */ = {
+		A10000030 /* VoiceFlowMac */ = {
 			isa = PBXGroup;
 			children = (
-				F1000001000000000000A102 /* VoiceFlowMacApp.swift */,
-				F1000002000000000000A102 /* Secrets.swift */,
-				F1000003000000000000A102 /* Info.plist */,
-				F1000004000000000000A102 /* VoiceFlowMac.entitlements */,
-				F1100001000000000000A102 /* MacDictationEngine.swift */,
-				F1100002000000000000A102 /* GlobalHotkey.swift */,
-				F1200001000000000000A102 /* MenuBarView.swift */,
-				G1000005000000000000A102 /* Shared */,
-				F1000005000000000000A102 /* Assets.xcassets */,
+				A10000050 /* App */,
+				A10000060 /* Models */,
+				A10000070 /* Core */,
+				A10000080 /* Views */,
+				A10005000 /* Assets.xcassets */,
+				A10006000 /* Info.plist */,
+				A10006002 /* VoiceFlowMac.entitlements */,
 			);
 			path = VoiceFlowMac;
 			sourceTree = "<group>";
 		};
-		G1000003000000000000A102 /* Products */ = {
+		A10000040 /* Products */ = {
 			isa = PBXGroup;
 			children = (
-				F1000000000000000000A102 /* VoiceFlowMac.app */,
+				A10000000 /* VoiceFlowMac.app */,
 			);
 			name = Products;
 			sourceTree = "<group>";
 		};
-		G1000005000000000000A102 /* Shared */ = {
+		A10000050 /* App */ = {
 			isa = PBXGroup;
 			children = (
-				F1300001000000000000A102 /* ClaudeCleanup.swift */,
-				F1300002000000000000A102 /* TonePreset.swift */,
-				F1300003000000000000A102 /* VocabPack.swift */,
+				A10001000 /* VoiceFlowMacApp.swift */,
+				A10001002 /* Secrets.swift */,
 			);
-			path = Shared;
+			path = App;
+			sourceTree = "<group>";
+		};
+		A10000060 /* Models */ = {
+			isa = PBXGroup;
+			children = (
+				A10002000 /* TonePreset.swift */,
+				A10002002 /* VocabPack.swift */,
+			);
+			path = Models;
+			sourceTree = "<group>";
+		};
+		A10000070 /* Core */ = {
+			isa = PBXGroup;
+			children = (
+				A10003000 /* ClaudeCleanup.swift */,
+				A10003002 /* GlobalHotkeyManager.swift */,
+				A10003004 /* AccessibilityTextManager.swift */,
+				A10003006 /* MacDictationEngine.swift */,
+				A10003008 /* MacAppSettings.swift */,
+				A1000300A /* MacVocabPackManager.swift */,
+			);
+			path = Core;
+			sourceTree = "<group>";
+		};
+		A10000080 /* Views */ = {
+			isa = PBXGroup;
+			children = (
+				A10004000 /* MenuBarView.swift */,
+				A10004002 /* OverlayPanel.swift */,
+				A10004004 /* MacSettingsView.swift */,
+				A10004006 /* MacVocabPackPickerView.swift */,
+			);
+			path = Views;
 			sourceTree = "<group>";
 		};
 /* End PBXGroup section */
 
 /* Begin PBXNativeTarget section */
-		T1000001000000000000A102 /* VoiceFlowMac */ = {
+		A10000100 /* VoiceFlowMac */ = {
 			isa = PBXNativeTarget;
-			buildConfigurationList = C1000004000000000000A102;
+			buildConfigurationList = A10000200 /* Build configuration list for PBXNativeTarget "VoiceFlowMac" */;
 			buildPhases = (
-				P1000002000000000000A102 /* Sources */,
-				P1000001000000000000A102 /* Frameworks */,
-				P1000003000000000000A102 /* Resources */,
+				A10000110 /* Sources */,
+				A10000010 /* Frameworks */,
+				A10000120 /* Resources */,
 			);
 			buildRules = (
 			);
@@ -103,25 +145,25 @@
 			);
 			name = VoiceFlowMac;
 			productName = VoiceFlowMac;
-			productReference = F1000000000000000000A102 /* VoiceFlowMac.app */;
+			productReference = A10000000 /* VoiceFlowMac.app */;
 			productType = "com.apple.product-type.application";
 		};
 /* End PBXNativeTarget section */
 
 /* Begin PBXProject section */
-		R1000001000000000000A102 /* Project object */ = {
+		A10000300 /* Project object */ = {
 			isa = PBXProject;
 			attributes = {
 				BuildIndependentTargetsInParallel = 1;
-				LastSwiftUpdateCheck = 1500;
-				LastUpgradeCheck = 1500;
+				LastSwiftUpdateCheck = 1540;
+				LastUpgradeCheck = 1540;
 				TargetAttributes = {
-					T1000001000000000000A102 = {
-						CreatedOnToolsVersion = 15.0;
+					A10000100 = {
+						CreatedOnToolsVersion = 15.4;
 					};
 				};
 			};
-			buildConfigurationList = C1000001000000000000A102;
+			buildConfigurationList = A10000400 /* Build configuration list for PBXProject "VoiceFlowMac" */;
 			compatibilityVersion = "Xcode 14.0";
 			developmentRegion = en;
 			hasScannedForEncodings = 0;
@@ -129,57 +171,90 @@
 				en,
 				Base,
 			);
-			mainGroup = G1000001000000000000A102;
-			productRefGroup = G1000003000000000000A102 /* Products */;
+			mainGroup = A10000020;
+			productRefGroup = A10000040 /* Products */;
 			projectDirPath = "";
 			projectRoot = "";
 			targets = (
-				T1000001000000000000A102 /* VoiceFlowMac */,
+				A10000100 /* VoiceFlowMac */,
 			);
 		};
 /* End PBXProject section */
 
 /* Begin PBXResourcesBuildPhase section */
-		P1000003000000000000A102 /* Resources */ = {
+		A10000120 /* Resources */ = {
 			isa = PBXResourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
-				B1000005000000000000A102 /* Assets.xcassets in Resources */,
+				A10005001 /* Assets.xcassets in Resources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
 /* End PBXResourcesBuildPhase section */
 
 /* Begin PBXSourcesBuildPhase section */
-		P1000002000000000000A102 /* Sources */ = {
+		A10000110 /* Sources */ = {
 			isa = PBXSourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
-				B1000001000000000000A102 /* VoiceFlowMacApp.swift in Sources */,
-				B1000002000000000000A102 /* Secrets.swift in Sources */,
-				B1100001000000000000A102 /* MacDictationEngine.swift in Sources */,
-				B1100002000000000000A102 /* GlobalHotkey.swift in Sources */,
-				B1200001000000000000A102 /* MenuBarView.swift in Sources */,
-				B1300001000000000000A102 /* ClaudeCleanup.swift in Sources */,
-				B1300002000000000000A102 /* TonePreset.swift in Sources */,
-				B1300003000000000000A102 /* VocabPack.swift in Sources */,
+				A10001001 /* VoiceFlowMacApp.swift in Sources */,
+				A10001003 /* Secrets.swift in Sources */,
+				A10002001 /* TonePreset.swift in Sources */,
+				A10002003 /* VocabPack.swift in Sources */,
+				A10003001 /* ClaudeCleanup.swift in Sources */,
+				A10003003 /* GlobalHotkeyManager.swift in Sources */,
+				A10003005 /* AccessibilityTextManager.swift in Sources */,
+				A10003007 /* MacDictationEngine.swift in Sources */,
+				A10003009 /* MacAppSettings.swift in Sources */,
+				A1000300B /* MacVocabPackManager.swift in Sources */,
+				A10004001 /* MenuBarView.swift in Sources */,
+				A10004003 /* OverlayPanel.swift in Sources */,
+				A10004005 /* MacSettingsView.swift in Sources */,
+				A10004007 /* MacVocabPackPickerView.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
 /* End PBXSourcesBuildPhase section */
 
 /* Begin XCBuildConfiguration section */
-		C1000002000000000000A102 /* Debug */ = {
+		A10000500 /* Debug */ = {
 			isa = XCBuildConfiguration;
 			buildSettings = {
 				ALWAYS_SEARCH_USER_PATHS = NO;
+				ASSETCATALOG_COMPILER_GENERATE_SWIFT_ASSET_SYMBOL_EXTENSIONS = YES;
+				CLANG_ANALYZER_NONNULL = YES;
+				CLANG_ANALYZER_NUMBER_OBJECT_CONVERSION = YES_AGGRESSIVE;
+				CLANG_CXX_LANGUAGE_STANDARD = "gnu++20";
 				CLANG_ENABLE_MODULES = YES;
 				CLANG_ENABLE_OBJC_ARC = YES;
-				CODE_SIGN_STYLE = Automatic;
+				CLANG_ENABLE_OBJC_WEAK = YES;
+				CLANG_WARN_BLOCK_CAPTURE_AUTORELEASING = YES;
+				CLANG_WARN_BOOL_CONVERSION = YES;
+				CLANG_WARN_COMMA = YES;
+				CLANG_WARN_CONSTANT_CONVERSION = YES;
+				CLANG_WARN_DEPRECATED_OBJC_IMPLEMENTATIONS = YES;
+				CLANG_WARN_DIRECT_OBJC_ISA_USAGE = YES_ERROR;
+				CLANG_WARN_DOCUMENTATION_COMMENTS = YES;
+				CLANG_WARN_EMPTY_BODY = YES;
+				CLANG_WARN_ENUM_CONVERSION = YES;
+				CLANG_WARN_INFINITE_RECURSION = YES;
+				CLANG_WARN_INT_CONVERSION = YES;
+				CLANG_WARN_NON_LITERAL_NULL_CONVERSION = YES;
+				CLANG_WARN_OBJC_IMPLICIT_RETAIN_SELF = YES;
+				CLANG_WARN_OBJC_LITERAL_CONVERSION = YES;
+				CLANG_WARN_OBJC_ROOT_CLASS = YES_ERROR;
+				CLANG_WARN_QUOTED_INCLUDE_IN_FRAMEWORK_HEADER = YES;
+				CLANG_WARN_RANGE_LOOP_ANALYSIS = YES;
+				CLANG_WARN_STRICT_PROTOTYPES = YES;
+				CLANG_WARN_SUSPICIOUS_MOVE = YES;
+				CLANG_WARN_UNGUARDED_AVAILABILITY = YES_AGGRESSIVE;
+				CLANG_WARN_UNREACHABLE_CODE = YES;
+				CLANG_WARN__DUPLICATE_METHOD_MATCH = YES;
 				COPY_PHASE_STRIP = NO;
 				DEBUG_INFORMATION_FORMAT = dwarf;
 				ENABLE_STRICT_OBJC_MSGSEND = YES;
 				ENABLE_TESTABILITY = YES;
+				ENABLE_USER_SCRIPT_SANDBOXING = YES;
 				GCC_C_LANGUAGE_STANDARD = gnu17;
 				GCC_DYNAMIC_NO_PIC = NO;
 				GCC_NO_COMMON_BLOCKS = YES;
@@ -188,7 +263,13 @@
 					"DEBUG=1",
 					"$(inherited)",
 				);
-				MACOSX_DEPLOYMENT_TARGET = 14.0;
+				GCC_WARN_64_TO_32_BIT_CONVERSION = YES;
+				GCC_WARN_ABOUT_RETURN_TYPE = YES_ERROR;
+				GCC_WARN_UNDECLARED_SELECTOR = YES;
+				GCC_WARN_UNINITIALIZED_AUTOS = YES_AGGRESSIVE;
+				GCC_WARN_UNUSED_FUNCTION = YES;
+				GCC_WARN_UNUSED_VARIABLE = YES;
+				MACOSX_DEPLOYMENT_TARGET = 13.0;
 				MTL_ENABLE_DEBUG_INFO = INCLUDE_SOURCE;
 				MTL_FAST_MATH = YES;
 				ONLY_ACTIVE_ARCH = YES;
@@ -198,20 +279,53 @@
 			};
 			name = Debug;
 		};
-		C1000003000000000000A102 /* Release */ = {
+		A10000501 /* Release */ = {
 			isa = XCBuildConfiguration;
 			buildSettings = {
 				ALWAYS_SEARCH_USER_PATHS = NO;
+				ASSETCATALOG_COMPILER_GENERATE_SWIFT_ASSET_SYMBOL_EXTENSIONS = YES;
+				CLANG_ANALYZER_NONNULL = YES;
+				CLANG_ANALYZER_NUMBER_OBJECT_CONVERSION = YES_AGGRESSIVE;
+				CLANG_CXX_LANGUAGE_STANDARD = "gnu++20";
 				CLANG_ENABLE_MODULES = YES;
 				CLANG_ENABLE_OBJC_ARC = YES;
-				CODE_SIGN_STYLE = Automatic;
+				CLANG_ENABLE_OBJC_WEAK = YES;
+				CLANG_WARN_BLOCK_CAPTURE_AUTORELEASING = YES;
+				CLANG_WARN_BOOL_CONVERSION = YES;
+				CLANG_WARN_COMMA = YES;
+				CLANG_WARN_CONSTANT_CONVERSION = YES;
+				CLANG_WARN_DEPRECATED_OBJC_IMPLEMENTATIONS = YES;
+				CLANG_WARN_DIRECT_OBJC_ISA_USAGE = YES_ERROR;
+				CLANG_WARN_DOCUMENTATION_COMMENTS = YES;
+				CLANG_WARN_EMPTY_BODY = YES;
+				CLANG_WARN_ENUM_CONVERSION = YES;
+				CLANG_WARN_INFINITE_RECURSION = YES;
+				CLANG_WARN_INT_CONVERSION = YES;
+				CLANG_WARN_NON_LITERAL_NULL_CONVERSION = YES;
+				CLANG_WARN_OBJC_IMPLICIT_RETAIN_SELF = YES;
+				CLANG_WARN_OBJC_LITERAL_CONVERSION = YES;
+				CLANG_WARN_OBJC_ROOT_CLASS = YES_ERROR;
+				CLANG_WARN_QUOTED_INCLUDE_IN_FRAMEWORK_HEADER = YES;
+				CLANG_WARN_RANGE_LOOP_ANALYSIS = YES;
+				CLANG_WARN_STRICT_PROTOTYPES = YES;
+				CLANG_WARN_SUSPICIOUS_MOVE = YES;
+				CLANG_WARN_UNGUARDED_AVAILABILITY = YES_AGGRESSIVE;
+				CLANG_WARN_UNREACHABLE_CODE = YES;
+				CLANG_WARN__DUPLICATE_METHOD_MATCH = YES;
 				COPY_PHASE_STRIP = NO;
 				DEBUG_INFORMATION_FORMAT = "dwarf-with-dsym";
 				ENABLE_NS_ASSERTIONS = NO;
 				ENABLE_STRICT_OBJC_MSGSEND = YES;
+				ENABLE_USER_SCRIPT_SANDBOXING = YES;
 				GCC_C_LANGUAGE_STANDARD = gnu17;
 				GCC_NO_COMMON_BLOCKS = YES;
-				MACOSX_DEPLOYMENT_TARGET = 14.0;
+				GCC_WARN_64_TO_32_BIT_CONVERSION = YES;
+				GCC_WARN_ABOUT_RETURN_TYPE = YES_ERROR;
+				GCC_WARN_UNDECLARED_SELECTOR = YES;
+				GCC_WARN_UNINITIALIZED_AUTOS = YES_AGGRESSIVE;
+				GCC_WARN_UNUSED_FUNCTION = YES;
+				GCC_WARN_UNUSED_VARIABLE = YES;
+				MACOSX_DEPLOYMENT_TARGET = 13.0;
 				MTL_ENABLE_DEBUG_INFO = NO;
 				MTL_FAST_MATH = YES;
 				SDKROOT = macosx;
@@ -219,17 +333,21 @@
 			};
 			name = Release;
 		};
-		C1000005000000000000A102 /* Debug */ = {
+		A10000600 /* Debug */ = {
 			isa = XCBuildConfiguration;
 			buildSettings = {
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
+				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
 				CODE_SIGN_ENTITLEMENTS = VoiceFlowMac/VoiceFlowMac.entitlements;
 				CODE_SIGN_STYLE = Automatic;
 				COMBINE_HIDPI_IMAGES = YES;
 				CURRENT_PROJECT_VERSION = 1;
-				ENABLE_HARDENED_RUNTIME = NO;
+				DEVELOPMENT_TEAM = "";
+				ENABLE_HARDENED_RUNTIME = YES;
 				GENERATE_INFOPLIST_FILE = NO;
 				INFOPLIST_FILE = VoiceFlowMac/Info.plist;
+				INFOPLIST_KEY_LSApplicationCategoryType = "public.app-category.productivity";
+				INFOPLIST_KEY_LSUIElement = YES;
 				LD_RUNPATH_SEARCH_PATHS = (
 					"$(inherited)",
 					"@executable_path/../Frameworks",
@@ -242,17 +360,21 @@
 			};
 			name = Debug;
 		};
-		C1000006000000000000A102 /* Release */ = {
+		A10000601 /* Release */ = {
 			isa = XCBuildConfiguration;
 			buildSettings = {
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
+				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
 				CODE_SIGN_ENTITLEMENTS = VoiceFlowMac/VoiceFlowMac.entitlements;
 				CODE_SIGN_STYLE = Automatic;
 				COMBINE_HIDPI_IMAGES = YES;
 				CURRENT_PROJECT_VERSION = 1;
-				ENABLE_HARDENED_RUNTIME = NO;
+				DEVELOPMENT_TEAM = "";
+				ENABLE_HARDENED_RUNTIME = YES;
 				GENERATE_INFOPLIST_FILE = NO;
 				INFOPLIST_FILE = VoiceFlowMac/Info.plist;
+				INFOPLIST_KEY_LSApplicationCategoryType = "public.app-category.productivity";
+				INFOPLIST_KEY_LSUIElement = YES;
 				LD_RUNPATH_SEARCH_PATHS = (
 					"$(inherited)",
 					"@executable_path/../Frameworks",
@@ -268,25 +390,26 @@
 /* End XCBuildConfiguration section */
 
 /* Begin XCConfigurationList section */
-		C1000001000000000000A102 /* Build configuration list for PBXProject "VoiceFlowMac" */ = {
+		A10000200 /* Build configuration list for PBXNativeTarget "VoiceFlowMac" */ = {
 			isa = XCConfigurationList;
 			buildConfigurations = (
-				C1000002000000000000A102 /* Debug */,
-				C1000003000000000000A102 /* Release */,
+				A10000600 /* Debug */,
+				A10000601 /* Release */,
 			);
 			defaultConfigurationIsVisible = 0;
 			defaultConfigurationName = Release;
 		};
-		C1000004000000000000A102 /* Build configuration list for PBXNativeTarget "VoiceFlowMac" */ = {
+		A10000400 /* Build configuration list for PBXProject "VoiceFlowMac" */ = {
 			isa = XCConfigurationList;
 			buildConfigurations = (
-				C1000005000000000000A102 /* Debug */,
-				C1000006000000000000A102 /* Release */,
+				A10000500 /* Debug */,
+				A10000501 /* Release */,
 			);
 			defaultConfigurationIsVisible = 0;
 			defaultConfigurationName = Release;
 		};
 /* End XCConfigurationList section */
+
 	};
-	rootObject = R1000001000000000000A102 /* Project object */;
+	rootObject = A10000300 /* Project object */;
 }

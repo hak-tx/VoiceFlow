@@ -1,14 +1,10 @@
 //
 //  TonePreset.swift
-//  VoiceFlow
+//  VoiceFlowMac
 //
-//  A tone preset is a fixed cleanup style the user can pick to control
-//  how aggressively Claude rewrites the raw transcript during the
-//  polish pass. Each preset maps to a different system-prompt snippet
-//  that gets merged into the cleanup request.
-//
-//  Default is `.verbatim` (lightest possible cleanup — just filler
-//  removal + punctuation). Presets escalate from there.
+//  Tone presets control how aggressively Claude rewrites the raw
+//  transcript. Each preset maps to a system-prompt snippet merged
+//  into the cleanup request. Shared logic with the iOS app.
 //
 
 import Foundation
@@ -24,7 +20,6 @@ enum TonePreset: String, CaseIterable, Identifiable, Codable {
 
     var id: String { rawValue }
 
-    /// Display name shown in the picker UI.
     var title: String {
         switch self {
         case .verbatim:     return "Verbatim"
@@ -37,7 +32,6 @@ enum TonePreset: String, CaseIterable, Identifiable, Codable {
         }
     }
 
-    /// One-line description shown in the picker.
     var subtitle: String {
         switch self {
         case .verbatim:
@@ -57,7 +51,6 @@ enum TonePreset: String, CaseIterable, Identifiable, Codable {
         }
     }
 
-    /// SF Symbol name used in the picker button.
     var symbolName: String {
         switch self {
         case .verbatim:     return "text.quote"
@@ -70,19 +63,7 @@ enum TonePreset: String, CaseIterable, Identifiable, Codable {
         }
     }
 
-    /// Whether this preset is gated to Pro tier. Verbatim + email +
-    /// notes + code are available on free; the rest require Pro.
-    var requiresPro: Bool {
-        switch self {
-        case .verbatim, .email, .notes, .code: return false
-        case .slack, .socialPost, .professional: return true
-        }
-    }
-
-    /// System-prompt fragment merged into the cleanup request. This is
-    /// appended after the base rules (filler removal, punctuation,
-    /// preserve voice) so it influences style without overriding the
-    /// no-paraphrase guarantee.
+    /// System-prompt fragment merged into the cleanup request.
     var systemPromptFragment: String {
         switch self {
         case .verbatim:
@@ -138,63 +119,25 @@ enum TonePreset: String, CaseIterable, Identifiable, Codable {
             mixed case ("Get request"), fix to "GET request".
             - PRESERVE GIT / DEV TERMS. "pull request", "PR", "merge conflict", \
             "rebase", "cherry-pick", "fast-forward", "branch", "commit", \
-            "staging", "main", "origin", "upstream" — these are sacred. If the \
-            STT misheard one (e.g. "post request" where the speaker clearly \
-            meant "pull request" in a git context, or "sink" where they meant \
-            "sync"), repair to the correct term.
+            "staging", "main", "origin", "upstream" — these are sacred.
             - PRESERVE IDENTIFIERS AND SYMBOLS. CamelCase (getUserById), \
             snake_case (user_id), kebab-case (feature-flag), SCREAMING_SNAKE \
-            (MAX_RETRIES), dotted paths (foo.bar.baz), namespaced \
-            (std::vector), generics (Array<String>), decorators (@override). \
-            Never "fix" these into English prose.
-            - SPOKEN SYMBOLS → REAL SYMBOLS when clearly meant as code syntax:
-                "dot" → .
-                "arrow" / "right arrow" → ->
-                "fat arrow" → =>
-                "double equals" → ==
-                "triple equals" → ===
-                "not equals" → !=
-                "open paren" / "close paren" → ( )
-                "open brace" / "close brace" → { }
-                "open bracket" / "close bracket" → [ ]
-                "colon" → :
-                "semicolon" → ;
-                "pipe" → |
-                "double pipe" → ||
-                "ampersand" → &
-                "double amp" → &&
-                "hash" / "pound" → #
-                "dollar sign" → $
-                "backtick" → `
-                Only do this when the context is clearly code (inside a \
-                function, listing args, writing a command). Don't convert \
-                "dot" in prose like "it's dot com".
-            - PRESERVE VERSION NUMBERS, ERROR CODES, FILE PATHS, URLS. \
-            "v1.2.3", "500 error", "404", "/api/v1/users", "s3://bucket/key", \
-            "localhost:3000" — all stay verbatim.
-            - PRESERVE ACRONYMS. PR, API, SDK, CLI, CI/CD, SLO, SLA, p95, k8s, \
-            OOM, JWT, JSON, YAML, TOML, TCP, UDP, HTTPS, OAuth, REST, gRPC, \
-            GraphQL, SQL, NoSQL. If the STT expanded one into prose, \
-            contract it back.
+            (MAX_RETRIES), dotted paths (foo.bar.baz).
+            - SPOKEN SYMBOLS to REAL SYMBOLS when clearly meant as code syntax: \
+            "dot" -> . | "arrow" -> -> | "fat arrow" -> => | \
+            "double equals" -> == | "not equals" -> != | etc.
+            - PRESERVE VERSION NUMBERS, ERROR CODES, FILE PATHS, URLS.
+            - PRESERVE ACRONYMS. PR, API, SDK, CLI, CI/CD, SLO, SLA, p95, k8s, etc.
             - WRAP CODE SNIPPETS IN BACKTICKS when the speaker clearly dictated \
-            a command, function call, or identifier reference. E.g. "run \
-            npm install" → "run `npm install`". Use single backticks for \
-            inline code. Use triple backticks only if the speaker dictated \
-            multiple lines of code as a block.
-            - Keep everything else (prose around the code) clean and natural, \
-            following the base cleanup rules.
-            - DO NOT add explanatory commentary, don't translate code into \
-            English, don't add "here's the code:" preambles.
+            a command or function call.
             """
         case .socialPost:
             return """
             Format the output as a short social media post:
             - Trim aggressively. Cut anything that isn't the core message.
             - Keep it under 280 characters if possible.
-            - Preserve any emoji the speaker mentioned ("heart emoji", "fire \
-            emoji") as the actual emoji characters.
-            - Use hashtags sparingly, only if the speaker explicitly said \
-            "hashtag X".
+            - Preserve any emoji the speaker mentioned as actual emoji characters.
+            - Use hashtags sparingly, only if the speaker explicitly said "hashtag X".
             - Punchy tone. Short sentences.
             """
         case .professional:
@@ -212,7 +155,7 @@ enum TonePreset: String, CaseIterable, Identifiable, Codable {
         }
     }
 
-    static let storageKey = "VoiceFlow.activeTonePreset"
+    static let storageKey = "VoiceFlowMac.activeTonePreset"
 
     static func loadPersisted() -> TonePreset {
         if let raw = UserDefaults.standard.string(forKey: storageKey),
