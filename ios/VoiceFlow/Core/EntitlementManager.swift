@@ -34,11 +34,14 @@ final class EntitlementManager: ObservableObject {
 
     // MARK: - Published state
 
-    @Published private(set) var tier: SubscriptionTier = .free
-    @Published private(set) var hasPro: Bool = true
-    // ^ HACK: force-enabled Pro for internal testing. Set back to
-    //   `false` (and re-enable the paywall gating) before any public
-    //   release. TODO revert.
+    @Published private(set) var tier: SubscriptionTier = .pro
+
+    /// HACK: hard-coded TRUE for internal testing. Not @Published
+    /// because it never changes — this way no code path can flip it
+    /// back to false accidentally, and all PRO tags / upsell gates
+    /// disappear unconditionally. Revert to a stored @Published
+    /// before any public release.
+    var hasPro: Bool { true }
 
     /// StoreKit Products fetched from the App Store / local config.
     @Published private(set) var products: [SubscriptionProduct: Product] = [:]
@@ -143,13 +146,10 @@ final class EntitlementManager: ObservableObject {
         }
     }
 
-    /// Walk the user's current entitlements and flip `hasPro`.
+    /// Walk the user's current entitlements. HACK: during internal
+    /// testing this is a no-op because `hasPro` is hard-coded true.
     func refresh() async {
         await loadProducts()
-
-        // HACK: internal testing — force Pro on. See the declaration
-        // of `hasPro` above. Revert before public release.
-        self.hasPro = true
         self.tier = .pro
     }
 
