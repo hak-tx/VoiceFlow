@@ -25,15 +25,6 @@ final class GlobalHotkeyManager: ObservableObject {
 
     var doubleTapInterval: TimeInterval = 0.4
 
-    // Stored as nonisolated state accessed from the CGEvent callback.
-    // The callback runs on a background runloop, so we use a simple
-    // lock-free approach: the callback writes timestamps and the
-    // main actor reads them via a timer.
-    private static var lastControlDownTime: CFAbsoluteTime = 0
-    private static var controlWasDown: Bool = false
-    private static var shouldToggle: Bool = false
-    private static var configuredInterval: TimeInterval = 0.4
-
     private var eventTap: CFMachPort?
     private var runLoopSource: CFRunLoopSource?
     private var pollTimer: Timer?
@@ -43,13 +34,19 @@ final class GlobalHotkeyManager: ObservableObject {
     }
 
     deinit {
-        unregister()
+        if let source = runLoopSource {
+            CFRunLoopRemoveSource(CFRunLoopGetMain(), source, .commonModes)
+        }
+        if let tap = eventTap {
+            CGEvent.tapEnable(tap: tap, enable: false)
+        }
+        pollTimer?.invalidate()
     }
 
     func register() {
         unregister()
 
-        Self.configuredInterval = doubleTapInterval
+        HotkeyState.configuredInterval = doubleTapInterval
 
         // Create a CGEvent tap for flagsChanged events.
         let mask: CGEventMask = (1 << CGEventType.flagsChanged.rawValue)
@@ -79,8 +76,8 @@ final class GlobalHotkeyManager: ObservableObject {
         // on a non-main-actor context).
         pollTimer = Timer.scheduledTimer(withTimeInterval: 0.05, repeats: true) { [weak self] _ in
             Task { @MainActor in
-                if Self.shouldToggle {
-                    Self.shouldToggle = false
+                if HotkeyState.shouldToggle {
+                    HotkeyState.shouldToggle = false
                     self?.engine?.toggle()
                 }
             }
@@ -114,6 +111,16 @@ final class GlobalHotkeyManager: ObservableObject {
     }
 }
 
+// Shared mutable state bridging the CGEvent callback (which runs on
+// a background runloop, outside MainActor) and the MainActor poll
+// timer. Simple value types — no lock needed for this use case.
+enum HotkeyState {
+    nonisolated(unsafe) static var lastControlDownTime: CFAbsoluteTime = 0
+    nonisolated(unsafe) static var controlWasDown: Bool = false
+    nonisolated(unsafe) static var shouldToggle: Bool = false
+    nonisolated(unsafe) static var configuredInterval: TimeInterval = 0.4
+}
+
 // C-function callback for CGEvent tap — runs outside MainActor.
 private func globalHotkeyCallback(
     proxy: CGEventTapProxy,
@@ -130,20 +137,20 @@ private func globalHotkeyCallback(
     let controlNow = flags.contains(.maskControl)
     let hasOthers = !flags.intersection([.maskCommand, .maskAlternate, .maskShift]).isEmpty
 
-    if controlNow && !GlobalHotkeyManager.controlWasDown && !hasOthers {
-        GlobalHotkeyManager.controlWasDown = true
+    if controlNow && !HotkeyState.controlWasDown && !hasOthers {
+        HotkeyState.controlWasDown = true
         let now = CFAbsoluteTimeGetCurrent()
-        let last = GlobalHotkeyManager.lastControlDownTime
-        let interval = GlobalHotkeyManager.configuredInterval
+        let last = HotkeyState.lastControlDownTime
+        let interval = HotkeyState.configuredInterval
 
         if (now - last) <= interval && last > 0 {
-            GlobalHotkeyManager.shouldToggle = true
-            GlobalHotkeyManager.lastControlDownTime = 0
+            HotkeyState.shouldToggle = true
+            HotkeyState.lastControlDownTime = 0
         } else {
-            GlobalHotkeyManager.lastControlDownTime = now
+            HotkeyState.lastControlDownTime = now
         }
-    } else if !controlNow && GlobalHotkeyManager.controlWasDown {
-        GlobalHotkeyManager.controlWasDown = false
+    } else if !controlNow && HotkeyState.controlWasDown {
+        HotkeyState.controlWasDown = false
     }
 
     return Unmanaged.passRetained(event)
