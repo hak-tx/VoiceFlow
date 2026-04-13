@@ -86,12 +86,17 @@ final class VoiceFlowKeyboardEngine: ObservableObject {
     func start() async {
         guard !isRecording else { return }
 
-        // NOTE: We skip async permission dialogs here. Keyboard
-        // extensions cannot reliably present system permission alerts.
-        // The main VoiceFlow app is responsible for requesting mic and
-        // speech permissions during onboarding. If permissions are
-        // missing the recognizer / audio engine will simply fail below
-        // and we surface the error to the user.
+        // Request permissions — the keyboard extension is a separate
+        // process from the main app and needs its own grants.
+        let speechOK: Bool = await withCheckedContinuation { cont in
+            SFSpeechRecognizer.requestAuthorization { status in
+                cont.resume(returning: status == .authorized)
+            }
+        }
+        guard speechOK else {
+            errorMessage = "Speech recognition not authorized. Open VoiceFlow app to grant."
+            return
+        }
 
         guard let recognizer = speechRecognizer, recognizer.isAvailable else {
             errorMessage = "Speech recognizer unavailable."
