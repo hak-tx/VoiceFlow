@@ -64,6 +64,13 @@ final class VoiceFlowKeyboardEngine: ObservableObject {
     /// True while AI autocorrect is processing.
     @Published private(set) var isCleaning: Bool = false
 
+    /// True when there are cleanups that can be undone.
+    @Published private(set) var canUndo: Bool = false
+
+    /// Stack of (rawText, cleanedText) pairs for multi-level undo.
+    /// Most recent cleanup is last.
+    private var undoStack: [(raw: String, cleaned: String)] = []
+
     /// Accumulated typed text for sentence detection.
     private var typedBuffer: String = ""
 
@@ -94,12 +101,40 @@ final class VoiceFlowKeyboardEngine: ObservableObject {
             do {
                 let cleaned = try await ClaudeCleanup.shared.clean(request)
                 if cleaned != rawText {
+                    // Push to undo stack before replacing.
+                    undoStack.append((raw: rawText, cleaned: cleaned))
+                    // Keep max 10 undo levels.
+                    if undoStack.count > 10 { undoStack.removeFirst() }
+                    canUndo = true
                     replaceAll(cleaned)
                 }
             } catch {
                 // Silent fail — don't disrupt typing
             }
         }
+    }
+
+    /// Undo the most recent AI cleanup — restores the raw text.
+    /// Can be called multiple times to undo multiple cleanups.
+    func undoLastCleanup() {
+        guard let last = undoStack.popLast(),
+              let replaceAll = onReplaceAllText,
+              let readAll = onReadAllText else { return }
+
+        let currentText = readAll()
+        // Replace the cleaned text with the raw version.
+        // The current text should contain the cleaned version.
+        let restored = currentText.replacingOccurrences(
+            of: last.cleaned,
+            with: last.raw
+        )
+        if restored != currentText {
+            replaceAll(restored)
+        } else {
+            // Fallback: just replace everything with raw.
+            replaceAll(last.raw)
+        }
+        canUndo = !undoStack.isEmpty
     }
 
     /// Track keystrokes for auto-cleanup trigger.

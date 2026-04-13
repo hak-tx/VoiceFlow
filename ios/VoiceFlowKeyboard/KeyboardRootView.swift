@@ -73,19 +73,36 @@ struct KeyboardRootView: View {
 
     private var typingModeView: some View {
         VStack(spacing: 0) {
-            // AI cleanup status bar
-            if engine.isCleaning {
-                HStack(spacing: 4) {
+            // AI cleanup status bar + undo button
+            HStack(spacing: 6) {
+                if engine.isCleaning {
                     ProgressView()
                         .scaleEffect(0.6)
                     Text("AI cleaning...")
                         .font(.caption2)
                         .foregroundStyle(.secondary)
-                    Spacer()
                 }
-                .padding(.horizontal, 8)
-                .padding(.vertical, 2)
+                Spacer()
+                if engine.canUndo {
+                    Button {
+                        engine.undoLastCleanup()
+                    } label: {
+                        HStack(spacing: 3) {
+                            Image(systemName: "arrow.uturn.backward")
+                                .font(.system(size: 12, weight: .semibold))
+                            Text("Undo")
+                                .font(.caption.weight(.semibold))
+                        }
+                        .foregroundStyle(.white)
+                        .padding(.horizontal, 10)
+                        .padding(.vertical, 5)
+                        .background(Color.orange)
+                        .clipShape(Capsule())
+                    }
+                }
             }
+            .frame(height: engine.isCleaning || engine.canUndo ? 24 : 0)
+            .padding(.horizontal, 8)
 
             switch typingPage {
             case .letters:
@@ -109,7 +126,7 @@ struct KeyboardRootView: View {
         let row2 = ["a","s","d","f","g","h","j","k","l"]
         let row3 = ["z","x","c","v","b","n","m"]
 
-        return VStack(spacing: 6) {
+        return VStack(spacing: 8) {
             // Row 1
             HStack(spacing: 4) {
                 ForEach(row1, id: \.self) { key in
@@ -140,7 +157,7 @@ struct KeyboardRootView: View {
         let row2 = ["-","/",":",";","(",")","$","&","@","\""]
         let row3 = [".",",","?","!","'"]
 
-        return VStack(spacing: 6) {
+        return VStack(spacing: 8) {
             HStack(spacing: 4) {
                 ForEach(row1, id: \.self) { key in
                     characterKey(key)
@@ -168,7 +185,7 @@ struct KeyboardRootView: View {
         let row2 = ["_","\\","|","~","<",">","\u{20AC}","\u{00A3}","\u{00A5}","\u{2022}"]
         let row3 = [".",",","?","!","'"]
 
-        return VStack(spacing: 6) {
+        return VStack(spacing: 8) {
             HStack(spacing: 4) {
                 ForEach(row1, id: \.self) { key in
                     characterKey(key)
@@ -218,7 +235,7 @@ struct KeyboardRootView: View {
                     .font(.system(size: 15))
                     .foregroundStyle(Color.primary)
                     .frame(maxWidth: .infinity)
-                    .frame(height: 42)
+                    .frame(height: 46)
                     .background(
                         RoundedRectangle(cornerRadius: 5)
                             .fill(Color(.systemGray5))
@@ -256,7 +273,7 @@ struct KeyboardRootView: View {
                 .font(.system(size: 22))
                 .foregroundStyle(Color.primary)
                 .frame(maxWidth: .infinity)
-                .frame(height: 42)
+                .frame(height: 46)
                 .background(
                     RoundedRectangle(cornerRadius: 5)
                         .fill(Color(.systemGray5))
@@ -288,7 +305,7 @@ struct KeyboardRootView: View {
             Image(systemName: shiftIconName)
                 .font(.system(size: 16, weight: .semibold))
                 .foregroundStyle(Color.primary)
-                .frame(width: 42, height: 42)
+                .frame(width: 46, height: 46)
                 .background(
                     RoundedRectangle(cornerRadius: 5)
                         .fill(shiftState != .lower ? Color(.systemGray4) : Color(.systemGray3))
@@ -312,7 +329,7 @@ struct KeyboardRootView: View {
             Image(systemName: "delete.left")
                 .font(.system(size: 16, weight: .semibold))
                 .foregroundStyle(Color.primary)
-                .frame(width: 42, height: 42)
+                .frame(width: 46, height: 46)
                 .background(
                     RoundedRectangle(cornerRadius: 5)
                         .fill(Color(.systemGray3))
