@@ -136,7 +136,14 @@ final class VoiceFlowKeyboardEngine: ObservableObject {
 
     private func configureAudioSession() throws {
         let session = AVAudioSession.sharedInstance()
-        try session.setCategory(.record, mode: .measurement, options: [.duckOthers])
+        // Keyboard extensions need .playAndRecord (not .record) to
+        // coexist with the host app's audio. Use .voiceChat mode
+        // instead of .measurement which isn't available in extensions.
+        try session.setCategory(
+            .playAndRecord,
+            mode: .default,
+            options: [.defaultToSpeaker, .allowBluetooth, .duckOthers]
+        )
         try session.setActive(true, options: .notifyOthersOnDeactivation)
     }
 
