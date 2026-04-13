@@ -48,6 +48,9 @@ final class VoiceFlowKeyboardEngine: ObservableObject {
     /// transcript otherwise.
     var onInsertText: ((String) -> Void)?
 
+    /// Called when the user taps backspace to delete one character.
+    var onDeleteBackward: (() -> Void)?
+
     /// Called when the user taps the globe key to switch keyboards.
     var onRequestKeyboardSwitch: (() -> Void)?
 
@@ -83,20 +86,12 @@ final class VoiceFlowKeyboardEngine: ObservableObject {
     func start() async {
         guard !isRecording else { return }
 
-        let speechOK: Bool = await withCheckedContinuation { cont in
-            SFSpeechRecognizer.requestAuthorization { status in
-                cont.resume(returning: status == .authorized)
-            }
-        }
-        let micOK: Bool = await withCheckedContinuation { cont in
-            AVAudioApplication.requestRecordPermission { granted in
-                cont.resume(returning: granted)
-            }
-        }
-        guard speechOK && micOK else {
-            errorMessage = "Mic or Speech permission denied."
-            return
-        }
+        // NOTE: We skip async permission dialogs here. Keyboard
+        // extensions cannot reliably present system permission alerts.
+        // The main VoiceFlow app is responsible for requesting mic and
+        // speech permissions during onboarding. If permissions are
+        // missing the recognizer / audio engine will simply fail below
+        // and we surface the error to the user.
 
         guard let recognizer = speechRecognizer, recognizer.isAvailable else {
             errorMessage = "Speech recognizer unavailable."

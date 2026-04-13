@@ -2,22 +2,17 @@
 //  KeyboardViewController.swift
 //  VoiceFlowKeyboard
 //
-//  Custom keyboard extension. When the user is typing in a text
-//  field anywhere in iOS and switches to the VoiceFlow keyboard,
-//  this view controller is what gets shown.
+//  Custom keyboard extension. Provides two modes:
 //
-//  Flow:
-//    1. User taps the big mic button -> recording starts via
-//       VoiceFlowKeyboardEngine (which wraps SFSpeechRecognizer).
-//    2. Silence auto-stop (or user taps Done) fires cleanup.
-//    3. Cleanup hits Claude via ClaudeCleanup (shared with main app).
-//    4. Polished text is inserted into the host app's text field via
-//       `textDocumentProxy.insertText(_:)`.
+//    1. TYPING MODE  - Full QWERTY keyboard with shift, backspace,
+//       numbers/symbols, globe, return, space, and a mic button to
+//       switch to dictation mode.
+//    2. DICTATION MODE - Mic-driven speech-to-text via
+//       VoiceFlowKeyboardEngine, with tone picker, live transcript,
+//       and a keyboard button to switch back to typing mode.
 //
-//  Keyboard extensions require "Full Access" from the user before
-//  they can make network requests. The onboarding in the main app
-//  walks users through enabling it; without Full Access, the polish
-//  step fails and we insert the raw transcript as a fallback.
+//  Text insertion and deletion both flow through the engine's
+//  callbacks, which this controller wires to `textDocumentProxy`.
 //
 
 import UIKit
@@ -32,18 +27,24 @@ class KeyboardViewController: UIInputViewController {
         super.viewDidLoad()
 
         engine = VoiceFlowKeyboardEngine()
+
+        // Insert text into the host app's text field.
         engine.onInsertText = { [weak self] text in
             guard let self else { return }
             self.textDocumentProxy.insertText(text)
         }
+
+        // Delete backward in the host app's text field.
+        engine.onDeleteBackward = { [weak self] in
+            guard let self else { return }
+            self.textDocumentProxy.deleteBackward()
+        }
+
+        // Switch to the next system keyboard (globe key).
         engine.onRequestKeyboardSwitch = { [weak self] in
             self?.advanceToNextInputMode()
         }
 
-        // `hasFullAccess` is a built-in property on
-        // UIInputViewController — true only when the user has
-        // toggled Allow Full Access in Settings → Keyboards. Without
-        // it, network calls (including the Claude API) are blocked.
         let rootView = KeyboardRootView(
             engine: engine,
             hasFullAccess: hasFullAccess
