@@ -73,6 +73,20 @@ struct KeyboardRootView: View {
 
     private var typingModeView: some View {
         VStack(spacing: 0) {
+            // AI cleanup status bar
+            if engine.isCleaning {
+                HStack(spacing: 4) {
+                    ProgressView()
+                        .scaleEffect(0.6)
+                    Text("AI cleaning...")
+                        .font(.caption2)
+                        .foregroundStyle(.secondary)
+                    Spacer()
+                }
+                .padding(.horizontal, 8)
+                .padding(.vertical, 2)
+            }
+
             switch typingPage {
             case .letters:
                 lettersLayout
@@ -198,7 +212,7 @@ struct KeyboardRootView: View {
 
             // Space bar
             Button {
-                engine.onInsertText?(" ")
+                engine.keyTyped(" ")
             } label: {
                 Text("space")
                     .font(.system(size: 15))
@@ -213,7 +227,7 @@ struct KeyboardRootView: View {
 
             // Return
             actionKey(label: "return", width: 72, color: Color(.systemGray3)) {
-                engine.onInsertText?("\n")
+                engine.keyTyped("\n")
             }
 
             // Mic (switch to dictation)
@@ -232,7 +246,7 @@ struct KeyboardRootView: View {
     /// Standard character key — inserts the character on tap.
     private func characterKey(_ char: String) -> some View {
         Button {
-            engine.onInsertText?(char)
+            engine.keyTyped(char)
             // Auto-lower after a single uppercase letter (not caps lock)
             if shiftState == .upper {
                 shiftState = .lower

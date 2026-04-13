@@ -54,6 +54,69 @@ final class VoiceFlowKeyboardEngine: ObservableObject {
     /// Called when the user taps the globe key to switch keyboards.
     var onRequestKeyboardSwitch: (() -> Void)?
 
+    /// Called to read all text from the current text field.
+    /// Returns the full document text for AI cleanup.
+    var onReadAllText: (() -> String)?
+
+    /// Called to replace all text in the current text field.
+    var onReplaceAllText: ((String) -> Void)?
+
+    /// True while AI autocorrect is processing.
+    @Published private(set) var isCleaning: Bool = false
+
+    /// Accumulated typed text for sentence detection.
+    private var typedBuffer: String = ""
+
+    // MARK: - AI Autocorrect
+
+    /// Called after the user types a sentence-ending character
+    /// (period, question mark, exclamation, return). Reads the
+    /// current text, sends to Claude for cleanup, replaces in-place.
+    func cleanupTypedText() {
+        guard let readAll = onReadAllText,
+              let replaceAll = onReplaceAllText else { return }
+
+        let rawText = readAll()
+        guard !rawText.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty else { return }
+
+        Task { @MainActor in
+            isCleaning = true
+            defer { isCleaning = false }
+
+            let request = ClaudeCleanup.Request(
+                rawTranscript: rawText,
+                tone: tonePreset,
+                packPromptHints: nil,
+                packTermsBlock: nil,
+                model: .haiku
+            )
+
+            do {
+                let cleaned = try await ClaudeCleanup.shared.clean(request)
+                if cleaned != rawText {
+                    replaceAll(cleaned)
+                }
+            } catch {
+                // Silent fail — don't disrupt typing
+            }
+        }
+    }
+
+    /// Track keystrokes for auto-cleanup trigger.
+    func keyTyped(_ key: String) {
+        onInsertText?(key)
+        typedBuffer += key
+
+        // Trigger cleanup after sentence-ending punctuation.
+        if key == "." || key == "?" || key == "!" || key == "\n" {
+            // Small delay so the character is inserted first.
+            DispatchQueue.main.asyncAfter(deadline: .now() + 0.3) { [weak self] in
+                self?.cleanupTypedText()
+            }
+            typedBuffer = ""
+        }
+    }
+
     // MARK: - Speech plumbing
 
     private let speechRecognizer: SFSpeechRecognizer? =
@@ -141,15 +204,16 @@ final class VoiceFlowKeyboardEngine: ObservableObject {
 
     private func configureAudioSession() throws {
         let session = AVAudioSession.sharedInstance()
-        // Keyboard extensions need .playAndRecord (not .record) to
-        // coexist with the host app's audio. Use .voiceChat mode
-        // instead of .measurement which isn't available in extensions.
-        try session.setCategory(
-            .playAndRecord,
-            mode: .default,
-            options: [.defaultToSpeaker, .allowBluetooth, .duckOthers]
-        )
-        try session.setActive(true, options: .notifyOthersOnDeactivation)
+        // Keyboard extensions need .playAndRecord with .voiceChat
+        // mode. Try multiple configurations — extensions are picky.
+        do {
+            try session.setCategory(.playAndRecord, mode: .voiceChat, options: [.defaultToSpeaker, .allowBluetooth])
+            try session.setActive(true, options: .notifyOthersOnDeactivation)
+        } catch {
+            // Fallback: try without any mode/options
+            try session.setCategory(.playAndRecord)
+            try session.setActive(true)
+        }
     }
 
     private func startRecognition(with recognizer: SFSpeechRecognizer) throws {

@@ -2,17 +2,8 @@
 //  KeyboardViewController.swift
 //  VoiceFlowKeyboard
 //
-//  Custom keyboard extension. Provides two modes:
-//
-//    1. TYPING MODE  - Full QWERTY keyboard with shift, backspace,
-//       numbers/symbols, globe, return, space, and a mic button to
-//       switch to dictation mode.
-//    2. DICTATION MODE - Mic-driven speech-to-text via
-//       VoiceFlowKeyboardEngine, with tone picker, live transcript,
-//       and a keyboard button to switch back to typing mode.
-//
-//  Text insertion and deletion both flow through the engine's
-//  callbacks, which this controller wires to `textDocumentProxy`.
+//  Custom keyboard extension with QWERTY typing + voice dictation.
+//  AI autocorrect runs after each sentence, cleaning up text in-place.
 //
 
 import UIKit
@@ -30,19 +21,27 @@ class KeyboardViewController: UIInputViewController {
 
         // Insert text into the host app's text field.
         engine.onInsertText = { [weak self] text in
-            guard let self else { return }
-            self.textDocumentProxy.insertText(text)
+            self?.textDocumentProxy.insertText(text)
         }
 
         // Delete backward in the host app's text field.
         engine.onDeleteBackward = { [weak self] in
-            guard let self else { return }
-            self.textDocumentProxy.deleteBackward()
+            self?.textDocumentProxy.deleteBackward()
         }
 
         // Switch to the next system keyboard (globe key).
         engine.onRequestKeyboardSwitch = { [weak self] in
             self?.advanceToNextInputMode()
+        }
+
+        // Read all text from the current text field for AI cleanup.
+        engine.onReadAllText = { [weak self] in
+            self?.readFullDocumentText() ?? ""
+        }
+
+        // Replace all text in the current text field after cleanup.
+        engine.onReplaceAllText = { [weak self] newText in
+            self?.replaceFullDocumentText(with: newText)
         }
 
         let rootView = KeyboardRootView(
@@ -67,12 +66,38 @@ class KeyboardViewController: UIInputViewController {
         self.hostingController = hosting
     }
 
-    override func textWillChange(_ textInput: UITextInput?) {
-        // Called before text changes in the host app.
+    // MARK: - Read / Replace full document text
+
+    /// Read all text from the text field by walking backward and
+    /// forward through textDocumentProxy.
+    private func readFullDocumentText() -> String {
+        guard let proxy = textDocumentProxy as? UITextDocumentProxy else { return "" }
+
+        let before = proxy.documentContextBeforeInput ?? ""
+        let after = proxy.documentContextAfterInput ?? ""
+        return before + after
     }
 
-    override func textDidChange(_ textInput: UITextInput?) {
-        // Called after text changes in the host app. Useful for
-        // adapting UI based on keyboard appearance (light/dark).
+    /// Replace all text in the text field with new text.
+    /// Selects all existing text by deleting it, then inserts new.
+    private func replaceFullDocumentText(with newText: String) {
+        guard let proxy = textDocumentProxy as? UITextDocumentProxy else { return }
+
+        let before = proxy.documentContextBeforeInput ?? ""
+        let after = proxy.documentContextAfterInput ?? ""
+
+        // Move cursor to end of document.
+        if !after.isEmpty {
+            proxy.adjustTextPosition(byCharacterOffset: after.count)
+        }
+
+        // Delete all characters backward.
+        let total = before.count + after.count
+        for _ in 0..<total {
+            proxy.deleteBackward()
+        }
+
+        // Insert the cleaned text.
+        proxy.insertText(newText)
     }
 }
