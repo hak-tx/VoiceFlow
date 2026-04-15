@@ -174,8 +174,14 @@ final class VoiceFlowKeyboardEngine: ObservableObject {
 
         do {
             let session = AVAudioSession.sharedInstance()
-            try session.setCategory(.record, mode: .default, options: [])
-            try session.setActive(true)
+            // .playAndRecord with default mode is most compatible
+            // for keyboard extensions. .record alone often fails.
+            try session.setCategory(
+                .playAndRecord,
+                mode: .default,
+                options: [.defaultToSpeaker, .allowBluetooth, .mixWithOthers]
+            )
+            try session.setActive(true, options: .notifyOthersOnDeactivation)
             sessionActive = true
         } catch {
             errorMessage = "Audio session: \(error.localizedDescription)"
@@ -226,25 +232,37 @@ final class VoiceFlowKeyboardEngine: ObservableObject {
     @discardableResult
     private func startRecorder(useA: Bool) -> Bool {
         let tempDir = FileManager.default.temporaryDirectory
-        let url = tempDir.appendingPathComponent("vfk-\(UUID().uuidString).m4a")
+        let url = tempDir.appendingPathComponent("vfk-\(UUID().uuidString).caf")
+        // CAF + Linear PCM is the most compatible recording format
+        // in keyboard extensions. Use 44.1kHz which iOS hardware
+        // always supports.
         let settings: [String: Any] = [
-            AVFormatIDKey: Int(kAudioFormatMPEG4AAC),
-            AVSampleRateKey: 16000.0,
+            AVFormatIDKey: Int(kAudioFormatLinearPCM),
+            AVSampleRateKey: 44100.0,
             AVNumberOfChannelsKey: 1,
-            AVEncoderAudioQualityKey: AVAudioQuality.medium.rawValue
+            AVLinearPCMBitDepthKey: 16,
+            AVLinearPCMIsBigEndianKey: false,
+            AVLinearPCMIsFloatKey: false
         ]
         do {
             let recorder = try AVAudioRecorder(url: url, settings: settings)
             recorder.isMeteringEnabled = true
-            guard recorder.record() else { return false }
+            guard recorder.prepareToRecord() else {
+                errorMessage = "prepareToRecord failed"
+                return false
+            }
+            guard recorder.record() else {
+                errorMessage = "record() returned false — check mic permission"
+                return false
+            }
             if useA {
                 recorderA = recorder
             } else {
                 recorderB = recorder
             }
             return true
-        } catch {
-            errorMessage = "Recorder init failed: \(error.localizedDescription)"
+        } catch let nsErr as NSError {
+            errorMessage = "Recorder init: \(nsErr.code) \(nsErr.localizedDescription)"
             return false
         }
     }
