@@ -247,9 +247,9 @@ struct KeyboardRootView: View {
                 engine.keyTyped("\n")
             }
 
-            // Mic (switch to dictation)
-            actionKey(systemImage: "mic.fill", width: 42) {
-                mode = .dictation
+            // Mic (open main VoiceFlow app for dictation)
+            actionKey(systemImage: "mic.fill", width: 46) {
+                engine.onOpenMainAppForDictation?()
             }
         }
         .padding(.top, 6)

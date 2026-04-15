@@ -66,6 +66,13 @@ struct VoiceFlowApp: App {
                         .environmentObject(pasteTargets)
                         .environmentObject(settings)
                 }
+                .onOpenURL { url in
+                    // Handle voiceflow:// deep links from the
+                    // keyboard extension's mic button.
+                    if url.scheme == "voiceflow" && url.host == "dictate" {
+                        intentQuickDictate = true
+                    }
+                }
         }
     }
 

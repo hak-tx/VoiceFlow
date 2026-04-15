@@ -44,6 +44,14 @@ class KeyboardViewController: UIInputViewController {
             self?.replaceFullDocumentText(with: newText)
         }
 
+        // Open main VoiceFlow app for dictation via URL scheme.
+        engine.onOpenMainAppForDictation = { [weak self] in
+            guard let self else { return }
+            if let url = URL(string: "voiceflow://dictate") {
+                self.extensionContext?.open(url, completionHandler: nil)
+            }
+        }
+
         let rootView = KeyboardRootView(
             engine: engine,
             hasFullAccess: hasFullAccess

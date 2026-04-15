@@ -61,6 +61,11 @@ final class VoiceFlowKeyboardEngine: ObservableObject {
     /// Called to replace all text in the current text field.
     var onReplaceAllText: ((String) -> Void)?
 
+    /// Called when user taps the mic button — opens main VoiceFlow
+    /// app for dictation (keyboard extensions can't reliably use
+    /// AVAudioEngine due to iOS sandbox restrictions).
+    var onOpenMainAppForDictation: (() -> Void)?
+
     /// True while AI autocorrect is processing.
     @Published private(set) var isCleaning: Bool = false
 

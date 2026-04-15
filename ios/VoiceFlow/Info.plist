@@ -20,6 +20,17 @@
     <string>1.0.0</string>
     <key>CFBundleVersion</key>
     <string>18</string>
+    <key>CFBundleURLTypes</key>
+    <array>
+        <dict>
+            <key>CFBundleURLName</key>
+            <string>com.hak-tx.voiceflow</string>
+            <key>CFBundleURLSchemes</key>
+            <array>
+                <string>voiceflow</string>
+            </array>
+        </dict>
+    </array>
     <key>LSRequiresIPhoneOS</key>
     <true/>
     <key>UIApplicationSceneManifest</key>
