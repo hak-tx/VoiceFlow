@@ -73,6 +73,9 @@ struct KeyboardRootView: View {
 
     private var typingModeView: some View {
         VStack(spacing: 0) {
+            // Prominent voice dictate bar — like Wispr Flow.
+            voiceDictateBar
+
             // AI cleanup status bar + undo button
             HStack(spacing: 6) {
                 if engine.isCleaning {
@@ -116,6 +119,41 @@ struct KeyboardRootView: View {
         }
         .padding(.horizontal, 3)
         .padding(.top, 6)
+        .padding(.bottom, 2)
+    }
+
+    // MARK: Voice dictate bar (prominent, above keyboard)
+
+    private var voiceDictateBar: some View {
+        Button {
+            engine.onOpenMainAppForDictation?()
+        } label: {
+            HStack(spacing: 10) {
+                Image(systemName: "waveform")
+                    .font(.system(size: 18, weight: .semibold))
+                Text("Tap to dictate with VoiceFlow")
+                    .font(.system(size: 15, weight: .semibold))
+                Spacer()
+                Image(systemName: "mic.fill")
+                    .font(.system(size: 18, weight: .bold))
+            }
+            .foregroundStyle(.white)
+            .padding(.horizontal, 16)
+            .frame(height: 44)
+            .frame(maxWidth: .infinity)
+            .background(
+                LinearGradient(
+                    colors: [Color.accentColor, Color.accentColor.opacity(0.85)],
+                    startPoint: .leading,
+                    endPoint: .trailing
+                )
+            )
+            .clipShape(RoundedRectangle(cornerRadius: 12, style: .continuous))
+            .shadow(color: Color.accentColor.opacity(0.3), radius: 4, y: 2)
+        }
+        .buttonStyle(.plain)
+        .padding(.horizontal, 6)
+        .padding(.top, 4)
         .padding(.bottom, 2)
     }
 
@@ -247,10 +285,7 @@ struct KeyboardRootView: View {
                 engine.keyTyped("\n")
             }
 
-            // Mic (open main VoiceFlow app for dictation)
-            actionKey(systemImage: "mic.fill", width: 46) {
-                engine.onOpenMainAppForDictation?()
-            }
+            // (mic moved to prominent bar above the keyboard)
         }
         .padding(.top, 6)
         .padding(.bottom, 2)

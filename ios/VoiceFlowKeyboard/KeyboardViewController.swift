@@ -45,11 +45,25 @@ class KeyboardViewController: UIInputViewController {
         }
 
         // Open main VoiceFlow app for dictation via URL scheme.
+        // extensionContext.open() doesn't work in keyboard extensions,
+        // so we walk the responder chain to find UIApplication and
+        // call openURL: directly.
         engine.onOpenMainAppForDictation = { [weak self] in
-            guard let self else { return }
-            if let url = URL(string: "voiceflow://dictate") {
-                self.extensionContext?.open(url, completionHandler: nil)
+            guard let self,
+                  let url = URL(string: "voiceflow://dictate") else { return }
+            var responder: UIResponder? = self
+            while let r = responder {
+                if let app = r as? UIApplication {
+                    app.perform(
+                        NSSelectorFromString("openURL:"),
+                        with: url
+                    )
+                    return
+                }
+                responder = r.next
             }
+            // Fallback: try extensionContext (works in some iOS versions)
+            self.extensionContext?.open(url, completionHandler: nil)
         }
 
         let rootView = KeyboardRootView(
