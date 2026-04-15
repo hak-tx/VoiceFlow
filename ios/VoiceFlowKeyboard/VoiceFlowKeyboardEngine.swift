@@ -161,14 +161,18 @@ final class VoiceFlowKeyboardEngine: ObservableObject {
 
     private let speechRecognizer: SFSpeechRecognizer? =
         SFSpeechRecognizer(locale: Locale(identifier: "en-US"))
-    private let audioEngine = AVAudioEngine()
-    private var recognitionRequest: SFSpeechAudioBufferRecognitionRequest?
-    private var recognitionTask: SFSpeechRecognitionTask?
 
-    private var lastNonSilentAt: Date = Date()
-    private let silenceRMSThreshold: Float = 0.02
+    /// AVAudioRecorder works in keyboard extensions where AVAudioEngine
+    /// fails (CoreAudio error 2003329396). Records to a file, then
+    /// transcribes with SFSpeechURLRecognitionRequest after stop.
+    private var audioRecorder: AVAudioRecorder?
+    private var recordingURL: URL?
+    private var recordingTimer: Timer?
+    private var recordingStartedAt: Date?
+    private let maxRecordingDuration: TimeInterval = 60.0
     private let silenceThreshold: TimeInterval = 2.0
-    private var silencePollTimer: Timer?
+    private var lastNonSilentAt: Date = Date()
+    private let silenceMeterThreshold: Float = -40.0  // dB
 
     // MARK: - Lifecycle
 
@@ -189,15 +193,13 @@ final class VoiceFlowKeyboardEngine: ObservableObject {
     func start() async {
         guard !isRecording else { return }
 
-        // Request permissions — the keyboard extension is a separate
-        // process from the main app and needs its own grants.
         let speechOK: Bool = await withCheckedContinuation { cont in
             SFSpeechRecognizer.requestAuthorization { status in
                 cont.resume(returning: status == .authorized)
             }
         }
         guard speechOK else {
-            errorMessage = "Speech recognition not authorized. Open VoiceFlow app to grant."
+            errorMessage = "Speech recognition not authorized."
             return
         }
 
@@ -209,140 +211,136 @@ final class VoiceFlowKeyboardEngine: ObservableObject {
         liveTranscript = ""
         errorMessage = nil
         lastNonSilentAt = Date()
+        recordingStartedAt = Date()
+
+        // Create a temp file to record to.
+        let tempDir = FileManager.default.temporaryDirectory
+        let url = tempDir.appendingPathComponent(
+            "vf-\(UUID().uuidString).m4a"
+        )
+        recordingURL = url
+
+        // Configure session for recording.
+        do {
+            let session = AVAudioSession.sharedInstance()
+            try session.setCategory(.record, mode: .default, options: [])
+            try session.setActive(true)
+        } catch {
+            errorMessage = "Audio session error: \(error.localizedDescription)"
+            return
+        }
+
+        // AVAudioRecorder settings — M4A/AAC, 16kHz mono is plenty
+        // for speech recognition and small enough for fast upload.
+        let settings: [String: Any] = [
+            AVFormatIDKey: Int(kAudioFormatMPEG4AAC),
+            AVSampleRateKey: 16000.0,
+            AVNumberOfChannelsKey: 1,
+            AVEncoderAudioQualityKey: AVAudioQuality.medium.rawValue
+        ]
 
         do {
-            try configureAudioSession()
-            try startRecognition(with: recognizer)
+            let recorder = try AVAudioRecorder(url: url, settings: settings)
+            recorder.isMeteringEnabled = true
+            guard recorder.record() else {
+                errorMessage = "Could not start recorder."
+                return
+            }
+            audioRecorder = recorder
             isRecording = true
-            scheduleSilencePoll()
+            scheduleMeteringTimer()
         } catch {
-            errorMessage = "Could not start: \(error.localizedDescription)"
-            teardown()
+            errorMessage = "Recorder failed: \(error.localizedDescription)"
+            try? AVAudioSession.sharedInstance().setActive(false)
         }
     }
 
     func stop() async {
         guard isRecording else { return }
         isRecording = false
-        silencePollTimer?.invalidate()
-        silencePollTimer = nil
+        recordingTimer?.invalidate()
+        recordingTimer = nil
 
-        recognitionRequest?.endAudio()
-        recognitionTask?.finish()
-        recognitionTask = nil
-        recognitionRequest = nil
-        teardown()
+        audioRecorder?.stop()
+        let url = recordingURL
+        audioRecorder = nil
+        recordingURL = nil
+
+        try? AVAudioSession.sharedInstance().setActive(false)
         audioLevel = 0
 
-        let raw = liveTranscript.trimmingCharacters(in: .whitespacesAndNewlines)
-        guard !raw.isEmpty else { return }
+        // Transcribe the recorded file via SFSpeechURLRecognitionRequest.
+        guard let url, let recognizer = speechRecognizer else { return }
 
-        await polishAndInsert(raw: raw)
+        let raw = await transcribeFile(at: url, with: recognizer)
+        // Clean up the temp file.
+        try? FileManager.default.removeItem(at: url)
+
+        let trimmed = raw.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !trimmed.isEmpty else { return }
+
+        liveTranscript = trimmed
+        await polishAndInsert(raw: trimmed)
     }
 
-    // MARK: - Audio
-
-    private func configureAudioSession() throws {
-        let session = AVAudioSession.sharedInstance()
-        // Keyboard extensions need .playAndRecord with .voiceChat
-        // mode. Try multiple configurations — extensions are picky.
-        do {
-            try session.setCategory(.playAndRecord, mode: .voiceChat, options: [.defaultToSpeaker, .allowBluetooth])
-            try session.setActive(true, options: .notifyOthersOnDeactivation)
-        } catch {
-            // Fallback: try without any mode/options
-            try session.setCategory(.playAndRecord)
-            try session.setActive(true)
-        }
-    }
-
-    private func startRecognition(with recognizer: SFSpeechRecognizer) throws {
-        let request = SFSpeechAudioBufferRecognitionRequest()
-        request.shouldReportPartialResults = true
-        if #available(iOS 16.0, *) {
-            request.addsPunctuation = true
-        }
-        recognitionRequest = request
-
-        let inputNode = audioEngine.inputNode
-        let format = inputNode.outputFormat(forBus: 0)
-
-        inputNode.installTap(
-            onBus: 0,
-            bufferSize: 1024,
-            format: format
-        ) { [weak self] buffer, _ in
-            self?.recognitionRequest?.append(buffer)
-            let rms = Self.rms(of: buffer)
-            Task { @MainActor [weak self] in
-                guard let self else { return }
-                self.audioLevel = rms
-                if rms > self.silenceRMSThreshold {
-                    self.lastNonSilentAt = Date()
-                }
+    /// Transcribe an audio file using SFSpeechURLRecognitionRequest.
+    private func transcribeFile(
+        at url: URL,
+        with recognizer: SFSpeechRecognizer
+    ) async -> String {
+        return await withCheckedContinuation { cont in
+            let request = SFSpeechURLRecognitionRequest(url: url)
+            request.shouldReportPartialResults = false
+            if #available(iOS 16.0, *) {
+                request.addsPunctuation = true
             }
-        }
-
-        recognitionTask = recognizer.recognitionTask(with: request) {
-            [weak self] result, error in
-            guard let self else { return }
-            Task { @MainActor in
-                guard self.isRecording else { return }
-                if let result {
-                    self.liveTranscript = result.bestTranscription.formattedString
-                }
+            recognizer.recognitionTask(with: request) { result, error in
                 if let error {
-                    self.errorMessage = error.localizedDescription
+                    print("[VFKB] transcribe error: \(error.localizedDescription)")
+                    cont.resume(returning: "")
+                    return
+                }
+                if let result, result.isFinal {
+                    cont.resume(returning: result.bestTranscription.formattedString)
                 }
             }
         }
-
-        audioEngine.prepare()
-        try audioEngine.start()
     }
 
-    private func teardown() {
-        audioEngine.stop()
-        audioEngine.inputNode.removeTap(onBus: 0)
-        try? AVAudioSession.sharedInstance()
-            .setActive(false, options: .notifyOthersOnDeactivation)
-    }
-
-    private func scheduleSilencePoll() {
-        silencePollTimer?.invalidate()
-        silencePollTimer = Timer.scheduledTimer(
-            withTimeInterval: 0.25,
+    /// Poll the recorder's audio levels for live waveform + silence
+    /// auto-stop detection.
+    private func scheduleMeteringTimer() {
+        recordingTimer?.invalidate()
+        recordingTimer = Timer.scheduledTimer(
+            withTimeInterval: 0.1,
             repeats: true
         ) { [weak self] _ in
             Task { @MainActor [weak self] in
-                guard let self, self.isRecording else { return }
-                guard !self.liveTranscript.isEmpty else { return }
+                guard let self, let recorder = self.audioRecorder else { return }
+                recorder.updateMeters()
+                let avgPower = recorder.averagePower(forChannel: 0)
+                // Convert dB to 0-1 normalized level.
+                let normalized = max(0, (avgPower + 60) / 60)
+                self.audioLevel = normalized
+
+                if avgPower > self.silenceMeterThreshold {
+                    self.lastNonSilentAt = Date()
+                }
+
+                // Auto-stop on max duration.
+                if let started = self.recordingStartedAt,
+                   Date().timeIntervalSince(started) >= self.maxRecordingDuration {
+                    await self.stop()
+                    return
+                }
+
+                // Auto-stop on silence (only after some speech detected).
                 let elapsed = Date().timeIntervalSince(self.lastNonSilentAt)
                 if elapsed >= self.silenceThreshold {
-                    self.silencePollTimer?.invalidate()
-                    self.silencePollTimer = nil
                     await self.stop()
                 }
             }
         }
-    }
-
-    private static func rms(of buffer: AVAudioPCMBuffer) -> Float {
-        guard let channelData = buffer.floatChannelData else { return 0 }
-        let channelCount = Int(buffer.format.channelCount)
-        let frameLength = Int(buffer.frameLength)
-        guard frameLength > 0 else { return 0 }
-
-        var sum: Float = 0
-        for ch in 0..<channelCount {
-            let samples = channelData[ch]
-            for i in 0..<frameLength {
-                let v = samples[i]
-                sum += v * v
-            }
-        }
-        let mean = sum / Float(frameLength * channelCount)
-        return min(1.0, sqrtf(mean) * 4.0)
     }
 
     // MARK: - Polish + insert
