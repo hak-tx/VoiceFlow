@@ -73,39 +73,8 @@ struct KeyboardRootView: View {
 
     private var typingModeView: some View {
         VStack(spacing: 0) {
-            // Prominent voice dictate bar — like Wispr Flow.
+            // Action bar above keyboard: Dictate + AI Clean Up + Undo
             voiceDictateBar
-
-            // AI cleanup status bar + undo button
-            HStack(spacing: 6) {
-                if engine.isCleaning {
-                    ProgressView()
-                        .scaleEffect(0.6)
-                    Text("AI cleaning...")
-                        .font(.caption2)
-                        .foregroundStyle(.secondary)
-                }
-                Spacer()
-                if engine.canUndo {
-                    Button {
-                        engine.undoLastCleanup()
-                    } label: {
-                        HStack(spacing: 3) {
-                            Image(systemName: "arrow.uturn.backward")
-                                .font(.system(size: 12, weight: .semibold))
-                            Text("Undo")
-                                .font(.caption.weight(.semibold))
-                        }
-                        .foregroundStyle(.white)
-                        .padding(.horizontal, 10)
-                        .padding(.vertical, 5)
-                        .background(Color.orange)
-                        .clipShape(Capsule())
-                    }
-                }
-            }
-            .frame(height: engine.isCleaning || engine.canUndo ? 24 : 0)
-            .padding(.horizontal, 8)
 
             switch typingPage {
             case .letters:
@@ -118,41 +87,72 @@ struct KeyboardRootView: View {
             bottomRow
         }
         .padding(.horizontal, 3)
-        .padding(.top, 6)
+        .padding(.top, 4)
         .padding(.bottom, 2)
     }
 
     // MARK: Voice dictate bar (prominent, above keyboard)
 
     private var voiceDictateBar: some View {
-        Button {
-            // In-keyboard dictation now works via AVAudioRecorder.
-            mode = .dictation
-        } label: {
-            HStack(spacing: 10) {
-                Image(systemName: "waveform")
-                    .font(.system(size: 18, weight: .semibold))
-                Text("Tap to dictate with VoiceFlow")
-                    .font(.system(size: 15, weight: .semibold))
-                Spacer()
-                Image(systemName: "mic.fill")
-                    .font(.system(size: 18, weight: .bold))
+        HStack(spacing: 8) {
+            // Open main app for dictation (left, accent color).
+            Button {
+                engine.onOpenMainAppForDictation?()
+            } label: {
+                HStack(spacing: 6) {
+                    Image(systemName: "mic.fill")
+                        .font(.system(size: 15, weight: .bold))
+                    Text("Dictate in App")
+                        .font(.system(size: 13, weight: .semibold))
+                }
+                .foregroundStyle(.white)
+                .frame(maxWidth: .infinity)
+                .frame(height: 36)
+                .background(Color.accentColor)
+                .clipShape(RoundedRectangle(cornerRadius: 10, style: .continuous))
             }
-            .foregroundStyle(.white)
-            .padding(.horizontal, 16)
-            .frame(height: 44)
-            .frame(maxWidth: .infinity)
-            .background(
-                LinearGradient(
-                    colors: [Color.accentColor, Color.accentColor.opacity(0.85)],
-                    startPoint: .leading,
-                    endPoint: .trailing
-                )
-            )
-            .clipShape(RoundedRectangle(cornerRadius: 12, style: .continuous))
-            .shadow(color: Color.accentColor.opacity(0.3), radius: 4, y: 2)
+            .buttonStyle(.plain)
+
+            // AI Clean Up button (right, purple/sparkles).
+            Button {
+                engine.runManualAICleanup()
+            } label: {
+                HStack(spacing: 6) {
+                    if engine.isCleaning {
+                        ProgressView()
+                            .scaleEffect(0.7)
+                            .tint(.white)
+                    } else {
+                        Image(systemName: "sparkles")
+                            .font(.system(size: 15, weight: .bold))
+                    }
+                    Text(engine.isCleaning ? "Cleaning..." : "AI Clean Up")
+                        .font(.system(size: 13, weight: .semibold))
+                }
+                .foregroundStyle(.white)
+                .frame(maxWidth: .infinity)
+                .frame(height: 36)
+                .background(Color.purple)
+                .clipShape(RoundedRectangle(cornerRadius: 10, style: .continuous))
+            }
+            .buttonStyle(.plain)
+            .disabled(engine.isCleaning)
+
+            // Undo (only visible when cleanup history exists).
+            if engine.canUndo {
+                Button {
+                    engine.undoLastCleanup()
+                } label: {
+                    Image(systemName: "arrow.uturn.backward")
+                        .font(.system(size: 15, weight: .bold))
+                        .foregroundStyle(.white)
+                        .frame(width: 44, height: 36)
+                        .background(Color.orange)
+                        .clipShape(RoundedRectangle(cornerRadius: 10, style: .continuous))
+                }
+                .buttonStyle(.plain)
+            }
         }
-        .buttonStyle(.plain)
         .padding(.horizontal, 6)
         .padding(.top, 4)
         .padding(.bottom, 2)

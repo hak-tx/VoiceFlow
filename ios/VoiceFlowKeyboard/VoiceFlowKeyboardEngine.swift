@@ -108,15 +108,77 @@ final class VoiceFlowKeyboardEngine: ObservableObject {
         canUndo = !undoStack.isEmpty
     }
 
+    /// Word-level autocorrect using UITextChecker. Tracks the
+    /// in-progress word; when the user types a space or punctuation,
+    /// checks the just-completed word and replaces it with the top
+    /// suggestion if it's misspelled.
+    private let textChecker = UITextChecker()
+    private var currentWord: String = ""
+
     func keyTyped(_ key: String) {
-        onInsertText?(key)
-        typedBuffer += key
-        if key == "." || key == "?" || key == "!" || key == "\n" {
-            DispatchQueue.main.asyncAfter(deadline: .now() + 0.3) { [weak self] in
-                self?.cleanupTypedText()
-            }
-            typedBuffer = ""
+        // Word boundary: space or punctuation. Run autocorrect on
+        // the just-completed word before inserting the boundary.
+        let isWordBoundary = (
+            key == " " || key == "." || key == "," || key == "?" ||
+            key == "!" || key == ";" || key == ":" || key == "\n"
+        )
+
+        if isWordBoundary {
+            autocorrectCurrentWord()
+            currentWord = ""
+            onInsertText?(key)
+        } else {
+            // Letter / digit / symbol — accumulate into current word.
+            currentWord += key
+            onInsertText?(key)
         }
+    }
+
+    /// Check the current word against UITextChecker and silently
+    /// replace it with the top suggestion if misspelled.
+    private func autocorrectCurrentWord() {
+        let word = currentWord
+        guard word.count >= 2 else { return }
+
+        // Skip if the word contains digits or special characters.
+        guard word.allSatisfy({ $0.isLetter }) else { return }
+
+        let nsWord = word as NSString
+        let range = NSRange(location: 0, length: nsWord.length)
+        let misspelledRange = textChecker.rangeOfMisspelledWord(
+            in: word,
+            range: range,
+            startingAt: 0,
+            wrap: false,
+            language: "en_US"
+        )
+
+        // No misspelling found — nothing to do.
+        guard misspelledRange.location != NSNotFound else { return }
+
+        // Get top suggestion.
+        guard let suggestions = textChecker.guesses(
+            forWordRange: misspelledRange,
+            in: word,
+            language: "en_US"
+        ), let top = suggestions.first else { return }
+
+        // Skip if suggestion is identical or radically different
+        // (avoid annoying autocorrects).
+        guard top.lowercased() != word.lowercased() else { return }
+        guard abs(top.count - word.count) <= 3 else { return }
+
+        // Delete the wrong word and type the corrected version.
+        for _ in 0..<word.count {
+            onDeleteBackward?()
+        }
+        onInsertText?(top)
+    }
+
+    /// Manually trigger AI cleanup on the entire current text field.
+    /// Reads all text, sends to Claude, replaces in place.
+    func runManualAICleanup() {
+        cleanupTypedText()
     }
 
     // MARK: - Lifecycle
