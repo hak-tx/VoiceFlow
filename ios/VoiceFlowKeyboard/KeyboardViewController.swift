@@ -2,73 +2,92 @@
 //  KeyboardViewController.swift
 //  VoiceFlowKeyboard
 //
-//  Custom keyboard extension with QWERTY typing + voice dictation.
-//  AI autocorrect runs after each sentence, cleaning up text in-place.
+//  Powered by KeyboardKit. Provides Apple-quality typing experience
+//  (autocorrect, smart touch targets, native key sizing) plus our
+//  custom action bar above the keyboard:
+//    [Dictate in App] [AI Clean Up] [Undo?]
 //
 
 import UIKit
 import SwiftUI
+import KeyboardKit
 
-class KeyboardViewController: UIInputViewController {
+class KeyboardViewController: KeyboardInputViewController {
 
     private var engine: VoiceFlowKeyboardEngine!
-    private var hostingController: UIHostingController<KeyboardRootView>?
 
     override func viewDidLoad() {
         super.viewDidLoad()
+        wireEngine()
+    }
 
+    /// Configure the keyboard view using KeyboardKit's SystemKeyboard
+    /// with our custom toolbar above it.
+    override func viewWillSetupKeyboardView() {
+        super.viewWillSetupKeyboardView()
+
+        setupKeyboardView { [weak self] controller in
+            guard let self else { return AnyView(EmptyView()) }
+            return AnyView(
+                VStack(spacing: 0) {
+                    // Our custom action bar above the keyboard.
+                    VoiceFlowActionBar(engine: self.engine)
+
+                    // KeyboardKit's standard QWERTY with autocorrect.
+                    SystemKeyboard(
+                        state: controller.state,
+                        services: controller.services,
+                        buttonContent: { $0.view },
+                        buttonView: { $0.view },
+                        emojiKeyboard: { $0.view },
+                        toolbar: { _ in EmptyView() }
+                    )
+                }
+            )
+        }
+    }
+
+    // MARK: - Engine wiring
+
+    private func wireEngine() {
         engine = VoiceFlowKeyboardEngine()
 
-        // Insert text into the host app's text field.
         engine.onInsertText = { [weak self] text in
             self?.textDocumentProxy.insertText(text)
         }
-
-        // Delete backward in the host app's text field.
         engine.onDeleteBackward = { [weak self] in
             self?.textDocumentProxy.deleteBackward()
         }
-
-        // Switch to the next system keyboard (globe key).
         engine.onRequestKeyboardSwitch = { [weak self] in
             self?.advanceToNextInputMode()
         }
-
-        // Read all text from the current text field for AI cleanup.
         engine.onReadAllText = { [weak self] in
             self?.readFullDocumentText() ?? ""
         }
-
-        // Replace all text in the current text field after cleanup.
         engine.onReplaceAllText = { [weak self] newText in
             self?.replaceFullDocumentText(with: newText)
         }
-
-        // Open main VoiceFlow app for dictation. Tries multiple
-        // approaches because iOS keeps locking down extension URL
-        // opening. Also writes a trigger to UserDefaults shared
-        // App Group so the main app auto-starts dictation when
-        // launched (even if URL open fails).
         engine.onOpenMainAppForDictation = { [weak self] in
-            guard let self else { return }
-            let url = URL(string: "voiceflow://dictate")!
+            self?.openMainApp()
+        }
+    }
 
-            // Approach 1: extensionContext.open() — documented API.
-            self.extensionContext?.open(url) { success in
-                if success { return }
-                // Approach 2: responder chain walk with recursive
-                // selector trick.
-                DispatchQueue.main.async {
-                    self.openURLViaResponderChain(url)
-                }
+    // MARK: - Open main app
+
+    private func openMainApp() {
+        let url = URL(string: "voiceflow://dictate")!
+
+        // Approach 1: extensionContext.open() — documented API.
+        extensionContext?.open(url) { [weak self] success in
+            if success { return }
+            // Approach 2: responder chain fallback.
+            DispatchQueue.main.async {
+                self?.openURLViaResponderChain(url)
             }
         }
     }
 
-    /// Walk the responder chain to find UIApplication and call its
-    /// openURL: directly. Works in some iOS versions where
-    /// extensionContext.open() doesn't.
-    @objc private func openURLViaResponderChain(_ url: URL) {
+    private func openURLViaResponderChain(_ url: URL) {
         var responder: UIResponder? = self
         let selector = sel_registerName("openURL:")
         while let r = responder {
@@ -80,60 +99,97 @@ class KeyboardViewController: UIInputViewController {
         }
     }
 
-        let rootView = KeyboardRootView(
-            engine: engine,
-            hasFullAccess: hasFullAccess
-        )
-        let hosting = UIHostingController(rootView: rootView)
-        hosting.view.translatesAutoresizingMaskIntoConstraints = false
-        hosting.view.backgroundColor = .clear
+    // MARK: - Read / Replace document text
 
-        addChild(hosting)
-        view.addSubview(hosting.view)
-        hosting.didMove(toParent: self)
-
-        NSLayoutConstraint.activate([
-            hosting.view.topAnchor.constraint(equalTo: view.topAnchor),
-            hosting.view.leadingAnchor.constraint(equalTo: view.leadingAnchor),
-            hosting.view.trailingAnchor.constraint(equalTo: view.trailingAnchor),
-            hosting.view.bottomAnchor.constraint(equalTo: view.bottomAnchor),
-        ])
-
-        self.hostingController = hosting
-    }
-
-    // MARK: - Read / Replace full document text
-
-    /// Read all text from the text field by walking backward and
-    /// forward through textDocumentProxy.
     private func readFullDocumentText() -> String {
-        guard let proxy = textDocumentProxy as? UITextDocumentProxy else { return "" }
-
-        let before = proxy.documentContextBeforeInput ?? ""
-        let after = proxy.documentContextAfterInput ?? ""
+        let before = textDocumentProxy.documentContextBeforeInput ?? ""
+        let after = textDocumentProxy.documentContextAfterInput ?? ""
         return before + after
     }
 
-    /// Replace all text in the text field with new text.
-    /// Selects all existing text by deleting it, then inserts new.
     private func replaceFullDocumentText(with newText: String) {
-        guard let proxy = textDocumentProxy as? UITextDocumentProxy else { return }
+        let before = textDocumentProxy.documentContextBeforeInput ?? ""
+        let after = textDocumentProxy.documentContextAfterInput ?? ""
 
-        let before = proxy.documentContextBeforeInput ?? ""
-        let after = proxy.documentContextAfterInput ?? ""
-
-        // Move cursor to end of document.
         if !after.isEmpty {
-            proxy.adjustTextPosition(byCharacterOffset: after.count)
+            textDocumentProxy.adjustTextPosition(byCharacterOffset: after.count)
         }
 
-        // Delete all characters backward.
         let total = before.count + after.count
         for _ in 0..<total {
-            proxy.deleteBackward()
+            textDocumentProxy.deleteBackward()
         }
 
-        // Insert the cleaned text.
-        proxy.insertText(newText)
+        textDocumentProxy.insertText(newText)
+    }
+}
+
+// MARK: - Custom action bar above keyboard
+
+private struct VoiceFlowActionBar: View {
+    @ObservedObject var engine: VoiceFlowKeyboardEngine
+
+    var body: some View {
+        HStack(spacing: 8) {
+            // Dictate in App
+            Button {
+                engine.onOpenMainAppForDictation?()
+            } label: {
+                HStack(spacing: 6) {
+                    Image(systemName: "mic.fill")
+                        .font(.system(size: 14, weight: .bold))
+                    Text("Dictate in App")
+                        .font(.system(size: 13, weight: .semibold))
+                }
+                .foregroundStyle(.white)
+                .frame(maxWidth: .infinity)
+                .frame(height: 34)
+                .background(Color.accentColor)
+                .clipShape(RoundedRectangle(cornerRadius: 9, style: .continuous))
+            }
+            .buttonStyle(.plain)
+
+            // AI Clean Up
+            Button {
+                engine.runManualAICleanup()
+            } label: {
+                HStack(spacing: 6) {
+                    if engine.isCleaning {
+                        ProgressView()
+                            .scaleEffect(0.7)
+                            .tint(.white)
+                    } else {
+                        Image(systemName: "sparkles")
+                            .font(.system(size: 14, weight: .bold))
+                    }
+                    Text(engine.isCleaning ? "Cleaning..." : "AI Clean Up")
+                        .font(.system(size: 13, weight: .semibold))
+                }
+                .foregroundStyle(.white)
+                .frame(maxWidth: .infinity)
+                .frame(height: 34)
+                .background(Color.purple)
+                .clipShape(RoundedRectangle(cornerRadius: 9, style: .continuous))
+            }
+            .buttonStyle(.plain)
+            .disabled(engine.isCleaning)
+
+            // Undo (conditional)
+            if engine.canUndo {
+                Button {
+                    engine.undoLastCleanup()
+                } label: {
+                    Image(systemName: "arrow.uturn.backward")
+                        .font(.system(size: 14, weight: .bold))
+                        .foregroundStyle(.white)
+                        .frame(width: 44, height: 34)
+                        .background(Color.orange)
+                        .clipShape(RoundedRectangle(cornerRadius: 9, style: .continuous))
+                }
+                .buttonStyle(.plain)
+            }
+        }
+        .padding(.horizontal, 6)
+        .padding(.vertical, 4)
     }
 }
