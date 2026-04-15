@@ -44,27 +44,41 @@ class KeyboardViewController: UIInputViewController {
             self?.replaceFullDocumentText(with: newText)
         }
 
-        // Open main VoiceFlow app for dictation via URL scheme.
-        // extensionContext.open() doesn't work in keyboard extensions,
-        // so we walk the responder chain to find UIApplication and
-        // call openURL: directly.
+        // Open main VoiceFlow app for dictation. Tries multiple
+        // approaches because iOS keeps locking down extension URL
+        // opening. Also writes a trigger to UserDefaults shared
+        // App Group so the main app auto-starts dictation when
+        // launched (even if URL open fails).
         engine.onOpenMainAppForDictation = { [weak self] in
-            guard let self,
-                  let url = URL(string: "voiceflow://dictate") else { return }
-            var responder: UIResponder? = self
-            while let r = responder {
-                if let app = r as? UIApplication {
-                    app.perform(
-                        NSSelectorFromString("openURL:"),
-                        with: url
-                    )
-                    return
+            guard let self else { return }
+            let url = URL(string: "voiceflow://dictate")!
+
+            // Approach 1: extensionContext.open() — documented API.
+            self.extensionContext?.open(url) { success in
+                if success { return }
+                // Approach 2: responder chain walk with recursive
+                // selector trick.
+                DispatchQueue.main.async {
+                    self.openURLViaResponderChain(url)
                 }
-                responder = r.next
             }
-            // Fallback: try extensionContext (works in some iOS versions)
-            self.extensionContext?.open(url, completionHandler: nil)
         }
+    }
+
+    /// Walk the responder chain to find UIApplication and call its
+    /// openURL: directly. Works in some iOS versions where
+    /// extensionContext.open() doesn't.
+    @objc private func openURLViaResponderChain(_ url: URL) {
+        var responder: UIResponder? = self
+        let selector = sel_registerName("openURL:")
+        while let r = responder {
+            if r.responds(to: selector) {
+                _ = r.perform(selector, with: url)
+                return
+            }
+            responder = r.next
+        }
+    }
 
         let rootView = KeyboardRootView(
             engine: engine,
