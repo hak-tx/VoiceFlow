@@ -48,13 +48,12 @@
 
 		B2100001000000000000A101 /* KeyboardViewController.swift in Sources */ = {isa = PBXBuildFile; fileRef = F2100001000000000000A101 /* KeyboardViewController.swift */; };
 		B2100002000000000000A101 /* VoiceFlowKeyboardEngine.swift in Sources */ = {isa = PBXBuildFile; fileRef = F2100002000000000000A101 /* VoiceFlowKeyboardEngine.swift */; };
+		B2100003000000000000A101 /* KeyboardRootView.swift in Sources */ = {isa = PBXBuildFile; fileRef = F2100003000000000000A101 /* KeyboardRootView.swift */; };
 		B2100004000000000000A101 /* ClaudeCleanup.swift in Sources */ = {isa = PBXBuildFile; fileRef = F1100002000000000000A101 /* ClaudeCleanup.swift */; };
 		B2100005000000000000A101 /* Secrets.swift in Sources */ = {isa = PBXBuildFile; fileRef = F1000002000000000000A101 /* Secrets.swift */; };
 		B2100006000000000000A101 /* TonePreset.swift in Sources */ = {isa = PBXBuildFile; fileRef = F1300001000000000000A101 /* TonePreset.swift */; };
 
 		B2200001000000000000A101 /* VoiceFlowKeyboard.appex in Embed App Extensions */ = {isa = PBXBuildFile; fileRef = F2000001000000000000A101 /* VoiceFlowKeyboard.appex */; settings = {ATTRIBUTES = (RemoveHeadersOnCopy, ); }; };
-
-		K1000001000000000000A101 /* KeyboardKit in Frameworks */ = {isa = PBXBuildFile; productRef = K3000001000000000000A101 /* KeyboardKit */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXFileReference section */
@@ -102,6 +101,7 @@
 		F2000001000000000000A101 /* VoiceFlowKeyboard.appex */ = {isa = PBXFileReference; explicitFileType = "wrapper.app-extension"; includeInIndex = 0; path = VoiceFlowKeyboard.appex; sourceTree = BUILT_PRODUCTS_DIR; };
 		F2100001000000000000A101 /* KeyboardViewController.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = KeyboardViewController.swift; sourceTree = "<group>"; };
 		F2100002000000000000A101 /* VoiceFlowKeyboardEngine.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = VoiceFlowKeyboardEngine.swift; sourceTree = "<group>"; };
+		F2100003000000000000A101 /* KeyboardRootView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = KeyboardRootView.swift; sourceTree = "<group>"; };
 		F2100004000000000000A101 /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist.xml; path = Info.plist; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
@@ -131,7 +131,6 @@
 			isa = PBXFrameworksBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
-				K1000001000000000000A101 /* KeyboardKit in Frameworks */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -179,6 +178,7 @@
 			children = (
 				F2100001000000000000A101 /* KeyboardViewController.swift */,
 				F2100002000000000000A101 /* VoiceFlowKeyboardEngine.swift */,
+				F2100003000000000000A101 /* KeyboardRootView.swift */,
 				F2100004000000000000A101 /* Info.plist */,
 			);
 			path = VoiceFlowKeyboard;
@@ -297,9 +297,6 @@
 			dependencies = (
 			);
 			name = VoiceFlowKeyboard;
-			packageProductDependencies = (
-				K3000001000000000000A101 /* KeyboardKit */,
-			);
 			productName = VoiceFlowKeyboard;
 			productReference = F2000001000000000000A101 /* VoiceFlowKeyboard.appex */;
 			productType = "com.apple.product-type.app-extension";
@@ -349,9 +346,6 @@
 				Base,
 			);
 			mainGroup = G1000001000000000000A101;
-			packageReferences = (
-				K2000001000000000000A101 /* XCRemoteSwiftPackageReference "KeyboardKit" */,
-			);
 			productRefGroup = G1000003000000000000A101 /* Products */;
 			projectDirPath = "";
 			projectRoot = "";
@@ -425,6 +419,7 @@
 			files = (
 				B2100001000000000000A101 /* KeyboardViewController.swift in Sources */,
 				B2100002000000000000A101 /* VoiceFlowKeyboardEngine.swift in Sources */,
+				B2100003000000000000A101 /* KeyboardRootView.swift in Sources */,
 				B2100004000000000000A101 /* ClaudeCleanup.swift in Sources */,
 				B2100005000000000000A101 /* Secrets.swift in Sources */,
 				B2100006000000000000A101 /* TonePreset.swift in Sources */,
@@ -686,25 +681,6 @@
 			defaultConfigurationName = Release;
 		};
 /* End XCConfigurationList section */
-
-/* Begin XCRemoteSwiftPackageReference section */
-		K2000001000000000000A101 /* XCRemoteSwiftPackageReference "KeyboardKit" */ = {
-			isa = XCRemoteSwiftPackageReference;
-			repositoryURL = "https://github.com/KeyboardKit/KeyboardKit";
-			requirement = {
-				kind = exactVersion;
-				version = 8.9.6;
-			};
-		};
-/* End XCRemoteSwiftPackageReference section */
-
-/* Begin XCSwiftPackageProductDependency section */
-		K3000001000000000000A101 /* KeyboardKit */ = {
-			isa = XCSwiftPackageProductDependency;
-			package = K2000001000000000000A101 /* XCRemoteSwiftPackageReference "KeyboardKit" */;
-			productName = KeyboardKit;
-		};
-/* End XCSwiftPackageProductDependency section */
 	};
 	rootObject = R1000001000000000000A101 /* Project object */;
 }
