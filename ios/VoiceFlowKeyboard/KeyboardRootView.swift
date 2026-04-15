@@ -126,7 +126,8 @@ struct KeyboardRootView: View {
 
     private var voiceDictateBar: some View {
         Button {
-            engine.onOpenMainAppForDictation?()
+            // In-keyboard dictation now works via AVAudioRecorder.
+            mode = .dictation
         } label: {
             HStack(spacing: 10) {
                 Image(systemName: "waveform")
