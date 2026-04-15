@@ -146,6 +146,24 @@ final class VoiceFlowKeyboardEngine: ObservableObject {
             return
         }
 
+        // Request mic permission separately — required for the
+        // keyboard extension process (not inherited from main app).
+        let micOK: Bool = await withCheckedContinuation { cont in
+            if #available(iOS 17.0, *) {
+                AVAudioApplication.requestRecordPermission { granted in
+                    cont.resume(returning: granted)
+                }
+            } else {
+                AVAudioSession.sharedInstance().requestRecordPermission { granted in
+                    cont.resume(returning: granted)
+                }
+            }
+        }
+        guard micOK else {
+            errorMessage = "Microphone permission denied."
+            return
+        }
+
         guard let recognizer = speechRecognizer, recognizer.isAvailable else {
             errorMessage = "Speech recognizer unavailable."
             return
